@@ -47,4 +47,4 @@ Sprint 0 (bootstrap, per `IMPLEMENTATION_PLAN.md`) is **complete**: repository s
 
 - All architectural changes require an ADR.
 - Major changes wait for review before implementation.
-- The LLM Policy in `CLAUDE.md` and `spec/05-llm-policy.md` is non-negotiable: LLMs never make investment decisions.
+- The LLM Policy in `CLAUDE.md` and `spec/00-engineering-constitution.md` is non-negotiable: LLMs never make investment decisions.

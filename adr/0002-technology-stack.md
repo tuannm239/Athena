@@ -21,7 +21,7 @@ The constitution fixes the stack. This ADR records the rationale so the choices 
 
 - (+) Fully typed stack supports the 100% type-hints rule.
 - (+) Snapshot-based DuckDB + Polars gives reproducible research and no look-ahead.
-- (−) Two analytical engines (Polars/DuckDB) require clear ownership rules (SPEC-04).
+- (−) Two analytical engines (Polars/DuckDB) require clear ownership rules (SPEC-07, Database).
 
 ## Alternatives Considered
 

@@ -19,7 +19,7 @@ Contracts, data model changes, pipeline impact, affected bounded contexts.
 ## Constitution Check
 
 - Which core principles does this touch?
-- LLM Policy impact (SPEC-05)?
+- LLM Policy impact (SPEC-00, LLM Policy)?
 - Explainability impact?
 
 ## Drawbacks & Alternatives

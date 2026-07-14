@@ -1,6 +1,6 @@
 """Research Copilot — structured research summaries (SPEC-01, MVP scope).
 
-LLM-assisted surfaces only; never decisions (SPEC-05).
+LLM-assisted surfaces only; never decisions (SPEC-00, LLM Policy).
 """
 from __future__ import annotations
 

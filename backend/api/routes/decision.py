@@ -1,6 +1,6 @@
 """Decision Kernel — hypothesis, probability, utility, evidence, explanation.
 
-The Decision stage is deterministic and non-LLM (SPEC-05, ADR-0003).
+The Decision stage is deterministic and non-LLM (SPEC-00, LLM Policy; ADR-0003).
 """
 from __future__ import annotations
 
