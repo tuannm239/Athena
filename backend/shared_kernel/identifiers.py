@@ -23,7 +23,7 @@ class _Id:
 
     def __eq__(self, other: object) -> bool:
         # Identity equality is type-strict: different Id subclasses never compare equal.
-        return type(other) is type(self) and other.value == self.value  # type: ignore[attr-defined]
+        return type(other) is type(self) and other.value == self.value
 
     def __hash__(self) -> int:
         return hash((type(self).__name__, self.value))

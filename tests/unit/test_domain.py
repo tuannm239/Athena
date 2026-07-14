@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "backend"))
 
-from analysis.domain.assessment import CompanyAssessment, Driver
+from analysis.domain.assessment import CompanyAssessment
 from behavior.domain.override import BiasKind, TriggeredOverride
 from decision_kernel.domain.decision import Decision, DecisionIntegrityError
 from portfolio.domain.portfolio import TargetPortfolio, WeightError
