@@ -29,6 +29,19 @@ class Probability:
         return Probability(Decimal(1) - self.value)
 
 
+@dataclass(frozen=True, slots=True)
+class Confidence:
+    """Reliability of the current evaluation, in [0, 1] (SPEC-03)."""
+
+    value: Decimal
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.value, Decimal):
+            raise TypeError("Confidence.value must be Decimal")
+        if not (Decimal(0) <= self.value <= Decimal(1)):
+            raise ValueError(f"Confidence out of range: {self.value}")
+
+
 class DistributionError(ValueError):
     """Raised when masses do not form a valid distribution."""
 

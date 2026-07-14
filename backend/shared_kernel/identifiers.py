@@ -47,3 +47,19 @@ class DecisionId(_Id): ...
 
 @dataclass(frozen=True, slots=True, eq=False)
 class ExplanationId(_Id): ...
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class EvidenceId(_Id): ...
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class PortfolioId(_Id): ...
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class CompanyId(_Id): ...
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class UserId(_Id): ...

@@ -1,29 +1,27 @@
-"""Risk report — must exist before any optimization (risk before return)."""
+"""Risk report — the Risk Engine's output contract (SPEC-11, Outputs).
+
+Risk management always takes precedence over return optimization
+(Constitution, Product Principle 2).
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
 
-from shared_kernel.lineage import Lineage
+from risk.domain.risk_assessment import RiskLevel
 
 
 @dataclass(frozen=True, slots=True)
-class Exposure:
-    dimension: str          # e.g. "sector:technology", "currency:USD"
-    weight: Decimal         # fraction of portfolio value
-
-    def __post_init__(self) -> None:
-        if not self.dimension:
-            raise ValueError("dimension must not be empty")
-
-
-@dataclass(frozen=True)
 class RiskReport:
-    exposures: tuple[Exposure, ...]
-    max_drawdown_estimate: Decimal   # fraction, e.g. 0.25
-    concentration_flag: bool
-    lineage: Lineage
+    overall_risk: RiskLevel
+    var: Decimal
+    cvar: Decimal
+    drawdown: Decimal
+    liquidity: Decimal
+    violations: tuple[str, ...]
+    recommendations: tuple[str, ...]
+    explanation: str
 
     def __post_init__(self) -> None:
-        if not (Decimal(0) <= self.max_drawdown_estimate <= Decimal(1)):
-            raise ValueError("max_drawdown_estimate must be within [0, 1]")
+        if not self.explanation:
+            raise ValueError("risk report requires an explanation (explainability)")
