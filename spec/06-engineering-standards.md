@@ -13,7 +13,7 @@ Last updated: 2026-07-14
 
 - **100% type hints**; mypy in strict mode is a CI gate.
 - Formatter + linter (ruff) enforced in CI.
-- Import-boundary checks enforce Clean Architecture rules (SPEC-02 §2) and the LLM boundary (SPEC-05 §4).
+- Import-boundary checks enforce Clean Architecture rules (SPEC-02, Dependency Rule) and the LLM boundary (SPEC-05 §4).
 
 ## 3. Testing
 

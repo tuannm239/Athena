@@ -6,7 +6,7 @@
 
 ## Context
 
-ATHENA has many bounded contexts (SPEC-02 §3) but a small team and an evolving domain. Microservices would impose operational cost and slow domain iteration; a classic layered monolith would erode boundaries.
+ATHENA has many bounded contexts (SPEC-02, Bounded Contexts) but a small team and an evolving domain. Microservices would impose operational cost and slow domain iteration; a classic layered monolith would erode boundaries.
 
 ## Decision
 

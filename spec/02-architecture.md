@@ -1,87 +1,197 @@
-# SPEC-02 — Architecture
+# SPEC-02 — Architecture Specification
 
-Status: Draft (Sprint 0)
-Owner: Architecture
-Last updated: 2026-07-14
+> Status: Accepted Version: 1.0
 
-## 1. Style
+# Architecture Specification
 
-- **Clean Architecture** with strict dependency rule: `domain ← application ← interface/infrastructure`.
-- **Domain-Driven Design** with explicit bounded contexts and a published ubiquitous language per context.
-- **Modular monolith first.** Contexts are packaged as independent modules with enforced import boundaries; extraction to services is a later, ADR-gated decision.
+## Purpose
 
-## 2. Layering (per bounded context)
+Define the software architecture for Athena.
 
-```text
-backend/<context>/
-  domain/          # entities, value objects, domain services, domain events — no framework imports
-  application/     # use cases, ports (interfaces), DTOs — no SQL, no HTTP
-  infrastructure/  # SQLAlchemy repositories, external adapters, message publishers
-  api/             # FastAPI routers (controllers) — no business logic
-```
+------------------------------------------------------------------------
 
-Rules (enforced by lint/import checks, see SPEC-06):
+# Architectural Style
 
-- `domain` imports nothing outside the standard library and the shared kernel.
-- `application` imports `domain` only.
-- `infrastructure` implements `application` ports.
-- `api` calls `application` use cases only; controllers contain no business logic.
-- No SQL outside `infrastructure`.
+-   Domain Driven Design
+-   Clean Architecture
+-   Hexagonal Architecture
+-   Modular Monolith (v1)
+-   Event-driven where appropriate
+-   API-first
 
-## 3. Bounded Contexts (initial map)
+------------------------------------------------------------------------
 
-| Context | Responsibility | Pipeline stages |
-|---|---|---|
-| `market_data` | Ingestion, normalization, data snapshots | Data, Normalization |
-| `features` | Feature engineering, feature store | Feature Engineering |
-| `knowledge` | Knowledge graph of companies/sectors/factors/events | Knowledge Graph |
-| `regime` | Market regime detection | Market Regime |
-| `analysis` | Sector and company analysis, probability updates | Sector/Company Analysis, Probability Update |
-| `risk` | Risk assessment (portfolio-first) | Risk Assessment |
-| `portfolio` | Optimization under constraints | Portfolio Optimization |
-| `behavior` | Behavioral override rules | Behavioral Override |
-| `decision_kernel` | Final decision assembly — deterministic, non-LLM | Decision |
-| `explanation` | Human-readable explanations, audit trail | Explanation |
-| `learning` | Outcome tracking, recalibration | Learning |
+# C4 Context
 
-Shared kernel: identifiers, money/quantity value objects, time/calendar, probability types.
+External Systems
 
-## 4. Context Communication
+-   Market Data Providers
+-   News Providers
+-   Macro Data Providers
+-   LLM Providers
+-   Authentication Provider
 
-- Within the monolith: application-layer ports and domain events (in-process event bus).
-- Contexts never reach into another context's domain model; they consume published contracts (DTOs/events) only.
-- All cross-context contracts are versioned and documented in `/spec`.
+Primary Users
 
-## 5. Data Architecture
+-   Investor
+-   Research Analyst
+-   Portfolio Manager
+-   Administrator
 
-| Store | Role |
-|---|---|
-| PostgreSQL | System of record: reference data, decisions, audit trail, portfolios |
-| DuckDB | Analytical workloads over columnar snapshots; reproducible research |
-| Redis | Caching, short-lived computation state, idempotency keys |
-| Polars | In-process dataframe engine for feature engineering and analytics |
+------------------------------------------------------------------------
 
-Reproducibility rule: every pipeline run references an immutable data snapshot ID.
+# Logical Layers
 
-## 6. ML Architecture
+Presentation
 
-- LightGBM / XGBoost for supervised signals feeding *probabilistic assessments* (never direct decisions).
-- PyMC for Bayesian probability updates and uncertainty quantification.
-- Optuna for hyperparameter search, tracked and reproducible.
-- Every model registered with: training snapshot ID, feature set version, evaluation report, and an explainability artifact (e.g., SHAP summary).
+-   Web
+-   REST API
+-   CLI
 
-## 7. LLM Boundary
+Application
 
-LLMs sit **outside** the Decision Kernel behind a single gateway module (`explanation`/documentation surfaces only). See SPEC-05. Architectural enforcement: the `decision_kernel` module has no dependency path to any LLM client.
+-   Use Cases
+-   Commands
+-   Queries
 
-## 8. API
+Domain
 
-- FastAPI, versioned under `/api/v1`.
-- OpenAPI schema is a published contract; UI is built against it (API-first).
-- Pydantic v2 models at the boundary; domain objects never serialized directly.
+-   Decision Kernel
+-   Portfolio
+-   Risk
+-   Market
+-   Company
+-   Behavior
 
-## 9. Cross-Cutting
+Infrastructure
 
-- 100% type hints; mypy strict.
-- Structured logging with decision-trace correlation IDs.
-- Every decision output is persisted with full input lineage (auditability).
+-   Database
+-   Cache
+-   ETL
+-   Message Bus
+-   External APIs
+
+------------------------------------------------------------------------
+
+# Bounded Contexts
+
+-   Decision
+-   Market
+-   Company
+-   Portfolio
+-   Risk
+-   Research
+-   Identity
+-   Notification
+
+No bounded context may directly modify another context's aggregates.
+
+------------------------------------------------------------------------
+
+# Dependency Rule
+
+Presentation ↓ Application ↓ Domain ↑ Infrastructure
+
+Outer layers depend on inner layers only.
+
+------------------------------------------------------------------------
+
+# Core Components
+
+## Decision Kernel
+
+Owns:
+
+-   hypothesis
+-   probability
+-   utility
+-   evidence
+-   explanation
+
+## Market Engine
+
+Owns:
+
+-   market regime
+-   liquidity
+-   breadth
+-   volatility
+
+## Company Engine
+
+Owns:
+
+-   fundamentals
+-   valuation
+-   quality
+-   catalysts
+
+## Portfolio Engine
+
+Owns:
+
+-   allocation
+-   exposure
+-   diversification
+-   position sizing
+
+## Risk Engine
+
+Owns:
+
+-   VaR
+-   CVaR
+-   stress tests
+-   drawdown
+
+## Behavior Engine
+
+Owns:
+
+-   bias detection
+-   decision review
+-   investor profile
+
+------------------------------------------------------------------------
+
+# Data Flow
+
+External Data → ETL → Data Lake → Feature Store → Knowledge Graph →
+Decision Kernel → API → UI
+
+------------------------------------------------------------------------
+
+# Repository Layout
+
+backend/ domain/ application/ infrastructure/ api/ frontend/ spec/
+tests/
+
+------------------------------------------------------------------------
+
+# Technology
+
+Backend: - Python 3.13 - FastAPI
+
+Data: - PostgreSQL - DuckDB - Redis
+
+ML: - LightGBM - XGBoost - PyMC
+
+Frontend: - Next.js - React
+
+------------------------------------------------------------------------
+
+# Architectural Constraints
+
+-   No business logic in controllers.
+-   No ORM entities inside domain.
+-   Domain must not depend on infrastructure.
+-   Every module has its own README and tests.
+
+------------------------------------------------------------------------
+
+# Acceptance Criteria
+
+-   Architecture diagrams maintained.
+-   Dependency rules enforced.
+-   Public APIs documented.
+-   Domain isolated from infrastructure.
