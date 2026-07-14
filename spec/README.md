@@ -2,6 +2,7 @@
 
 | Spec | Title |
 |---|---|
+| SPEC-00 | Engineering Constitution |
 | SPEC-01 | System Overview |
 | SPEC-02 | Architecture |
 | SPEC-03 | Decision Pipeline |
