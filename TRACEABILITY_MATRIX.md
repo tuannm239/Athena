@@ -1,0 +1,42 @@
+# Traceability Matrix
+
+Chain: RFC/SPEC → module → package → class(es) → tests.
+Rows marked **planned** gain code references when their sprint lands.
+No implementation may exist without a row here.
+
+## Implemented
+
+| Document | Module | Package | Classes | Tests |
+|---|---|---|---|---|
+| SPEC-03 §Value Objects | shared kernel | `shared_kernel` | `Probability`, `Confidence`, `ProbabilityDistribution`, `Money`, `Currency`, `Percentage`, `PositionSize`, `TimeRange` | `tests/unit/test_domain.py::TestValueObjects`, `TestMoney` |
+| SPEC-03 §Entities/Invariants, SPEC-04 §Business Rules | Decision | `decision_kernel.domain` | `Decision`, `DecisionStatus`, `DecisionType`, `ReviewRecord`, `Evidence` | `TestDecisionLifecycle` |
+| SPEC-03 §Repository Interfaces | Decision | `decision_kernel.domain.repository` | `DecisionRepository` | interface — impl tests in Sprint 2 (S2-09) |
+| SPEC-03 §Domain Events | all contexts | `*.domain.events`, `shared_kernel.events` | `DomainEvent`, `DecisionCreated`, `DecisionReviewed`, `EvidenceAdded`, `PortfolioUpdated`, `RiskCalculated`, `MarketRegimeChanged`, `LiquidityChanged`, `BreadthChanged`, `VolatilityChanged`, `BehaviorDetected` | `TestDecisionLifecycle::test_full_lifecycle` |
+| SPEC-05 §Outputs/Regimes | Market | `market.domain` | `MarketContext`, `Regime`, `Instrument`, `PricePoint`, `MarketRepository` | `TestMarket` |
+| SPEC-03 §Company | Company | `company.domain` | `Company`, `CompanyRepository` | construction covered via `TestIdentity`-style unit rules (extended in Sprint 2) |
+| SPEC-03 §Portfolio/Position, SPEC-10 §Constraints/Rules | Portfolio | `portfolio.domain` | `Portfolio`, `Position`, `PortfolioConstraints`, `PortfolioRepository` | `TestPortfolio` |
+| SPEC-03 §RiskAssessment, SPEC-11 §Levels/Outputs | Risk | `risk.domain` | `RiskAssessment`, `RiskLevel`, `RiskReport` | `TestRisk` |
+| SPEC-12 §Biases/Journal/Outputs | Behavior | `behavior.domain` | `BiasKind`, `BehaviorReport`, `DecisionJournalEntry` | `TestBehavior` |
+| SPEC-03 §Research, SPEC-01 §Research | Research | `research.domain` | `ResearchSummary`, `ResearchRepository` | Sprint 2 impl tests |
+| SPEC-07 §users | Identity | `identity.domain` | `User` | `TestIdentity` |
+| SPEC-08 §Principles (skeleton) | API | `api` | `create_app`, routers (501 placeholders) | `tests/integration/test_api.py` |
+| SPEC-07 §Migration (env only) | Infrastructure | `infrastructure.alembic` | `env.py` | `alembic history` smoke (Sprint 0) |
+
+## Planned
+
+| Document | Module | Package (planned) | Key classes (planned) | Tests (planned) | Sprint |
+|---|---|---|---|---|---|
+| SPEC-07 §Core Tables/Audit | Infrastructure | `infrastructure.db` | ORM models, repositories, `AuditRecord` | `tests/integration/test_persistence.py` | 2 |
+| SPEC-08 | API/Auth | `api`, `identity.application` | envelope, error mapper, JWT auth | endpoint integration tests | 3 |
+| RFC-0023 | Feature Store | `feature_store` | `FeatureMetadata`, `FeatureRegistry`, lifecycle service | registry/lifecycle unit tests | 4 |
+| RFC-0024 | Data Pipeline | `data_pipeline` | stage framework, `QualityReport`, lineage | quarantine/publish tests | 4 |
+| SPEC-06 | Factor Library | `feature_store.factors` | factor metadata + validation suite | registration tests | 4 |
+| RFC-0019 | Knowledge Graph | `knowledge` | node/edge model, `GraphStore` port, traversal services | deterministic traversal tests | 5 |
+| RFC-0018 | Probability | `probability` | `Prior`, `Likelihood`, `Posterior`, updater, `ProbabilityReport` | Bayesian property tests | 6 |
+| RFC-0017 (missing) | DSL | `dsl` | lexer, parser, AST | golden-file parse tests | 7 |
+| RFC-0020 | Compiler | `dsl.compiler` | semantic analyzer, rule validator, IR, graph builder | DC001–007 error tests | 8 |
+| SPEC-04 | Decision Kernel | `decision_kernel.application` | evaluation pipeline, explainability builder | kernel determinism tests | 9 |
+| SPEC-11 | Risk Engine | `risk.application` | metric calculators, scenario runner | reproducibility tests | 10 |
+| SPEC-10 | Portfolio Engine | `portfolio.application` | constructor, sizing, rebalancer, validator | constraint enforcement tests | 11 |
+| SPEC-12 | Behavior Engine | `behavior.application` | journaling, bias detectors, calibration tracker | deterministic scoring tests | 12 |
+| SPEC-09 | Backtest | `backtest` | simulator, metrics, reports | bias-guard regression tests | 13 |
