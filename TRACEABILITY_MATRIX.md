@@ -20,13 +20,18 @@ No implementation may exist without a row here.
 | SPEC-03 §Research, SPEC-01 §Research | Research | `research.domain` | `ResearchSummary`, `ResearchRepository` | Sprint 2 impl tests |
 | SPEC-07 §users | Identity | `identity.domain` | `User` | `TestIdentity` |
 | SPEC-08 §Principles (skeleton) | API | `api` | `create_app`, routers (501 placeholders) | `tests/integration/test_api.py` |
-| SPEC-07 §Migration (env only) | Infrastructure | `infrastructure.alembic` | `env.py` | `alembic history` smoke (Sprint 0) |
+| SPEC-07 §Core Tables/Indexing | Infrastructure | `infrastructure.db.models` | `UserRow`, `PortfolioRow`, `PositionRow`, `DecisionRow`, `EvidenceRow`, `FactorRow` | `tests/integration/test_persistence.py` |
+| SPEC-07 §Audit | Infrastructure | `infrastructure.db.repositories._audit`, `models.AuditRow` | `write_audit`, `AuditRow` | `test_persistence.py::TestDecisionRepository::test_updates_write_audit_records` |
+| SPEC-03 §Repository Interfaces, SPEC-07 (impl) | Infrastructure | `infrastructure.db.repositories` | `SqlDecisionRepository`, `SqlPortfolioRepository`, `SqlUserRepository` | `tests/integration/test_persistence.py` |
+| SPEC-07 §Migration | Infrastructure | `infrastructure.alembic` | `env.py`, revision `ec77f528e384` | CI step `alembic upgrade head` |
+| SPEC-07 §DuckDB (immutable snapshots) | Infrastructure | `infrastructure.duckdb_store` | `DuckDbSnapshotStore` | `tests/unit/test_infrastructure.py::TestDuckDbSnapshotStore` |
+| SPEC-07 §Redis (ephemeral state) | Infrastructure | `infrastructure.cache` | `RedisCache` | `tests/unit/test_infrastructure.py::TestRedisCache` (CI) |
+| SPEC-07 §users + SPEC-08 auth need | Identity | `identity.domain.repository` | `UserRepository` | `test_persistence.py::TestUserRepository` |
 
 ## Planned
 
 | Document | Module | Package (planned) | Key classes (planned) | Tests (planned) | Sprint |
 |---|---|---|---|---|---|
-| SPEC-07 §Core Tables/Audit | Infrastructure | `infrastructure.db` | ORM models, repositories, `AuditRecord` | `tests/integration/test_persistence.py` | 2 |
 | SPEC-08 | API/Auth | `api`, `identity.application` | envelope, error mapper, JWT auth | endpoint integration tests | 3 |
 | RFC-0023 | Feature Store | `feature_store` | `FeatureMetadata`, `FeatureRegistry`, lifecycle service | registry/lifecycle unit tests | 4 |
 | RFC-0024 | Data Pipeline | `data_pipeline` | stage framework, `QualityReport`, lineage | quarantine/publish tests | 4 |

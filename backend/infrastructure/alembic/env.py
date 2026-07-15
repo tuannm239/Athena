@@ -1,7 +1,6 @@
 """Alembic environment — migrations for the PostgreSQL system of record.
 
-No ORM models exist yet (Sprint 3 implements infrastructure), so
-target_metadata stays None until then.
+Migrations are forward-only and reviewed before merge (SPEC-07, Migration).
 """
 
 from __future__ import annotations
@@ -12,12 +11,15 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+import infrastructure.db.models  # noqa: F401  (registers all tables on Base.metadata)
+from infrastructure.db.base import Base
+
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = None
+target_metadata = Base.metadata
 
 
 def _database_url() -> str:

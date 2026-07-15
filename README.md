@@ -39,9 +39,18 @@ docker compose up --build                                # full stack: API + Pos
 
 Database migrations use Alembic (`uv run alembic upgrade head`); the migration environment lives in `backend/infrastructure/alembic`.
 
-## Sprint 0 Status
+## Status
 
-Sprint 0 (bootstrap, per `IMPLEMENTATION_PLAN.md`) is **complete**: repository structure, specifications, build configuration (uv + pyproject), FastAPI application with placeholder routes returning HTTP 501, Docker, Alembic, and the test/lint/type-check toolchain. No business logic beyond the initial domain models is implemented.
+Progress is tracked in `SPRINT_PLAN.md`; per-task detail in `TASK_PLAN.md`; change history in `CHANGELOG.md`.
+
+| Sprint | Scope | State |
+|---|---|---|
+| 0 | Bootstrap: structure, tooling, Docker, FastAPI 501 skeleton | Done |
+| 1 | Domain model (SPEC-03) | Done |
+| 2 | Persistence: ORM + repositories + Alembic + DuckDB + Redis + CI | Done |
+| 3+ | API/auth, data platform, engines | Planned — see `SPRINT_PLAN.md` |
+
+Database migrations: `uv run alembic upgrade head` (environment in `backend/infrastructure/alembic`). Persistence integration tests run against SQLite locally and PostgreSQL/Redis in CI.
 
 ## Governance
 
