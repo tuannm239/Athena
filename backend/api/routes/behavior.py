@@ -1,4 +1,5 @@
 """Behavior Engine — bias detection, decision review, investor profile (SPEC-02)."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter

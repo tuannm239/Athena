@@ -1,4 +1,5 @@
 """Market domain events (SPEC-05, Domain Events)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

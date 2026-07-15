@@ -3,6 +3,7 @@
 All events are immutable (SPEC-03, Domain Events) and are published
 through the application layer, never from inside the domain.
 """
+
 from __future__ import annotations
 
 import uuid

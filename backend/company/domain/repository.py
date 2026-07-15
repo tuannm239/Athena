@@ -1,4 +1,5 @@
 """Company repository interface (SPEC-03, Repository Interfaces)."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

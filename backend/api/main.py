@@ -3,6 +3,7 @@
 Every business route is a Sprint 0 placeholder returning HTTP 501;
 implementations arrive in their scheduled sprints (IMPLEMENTATION_PLAN.md).
 """
+
 from __future__ import annotations
 
 from fastapi import FastAPI

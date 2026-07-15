@@ -3,6 +3,7 @@
 No ORM models exist yet (Sprint 3 implements infrastructure), so
 target_metadata stays None until then.
 """
+
 from __future__ import annotations
 
 import os

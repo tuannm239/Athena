@@ -3,6 +3,7 @@
 All value objects are immutable. Percentages and position sizes are
 stored as fractions (0.25 == 25%) using Decimal, never float.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

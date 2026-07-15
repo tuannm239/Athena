@@ -3,6 +3,7 @@
 Journal entries are immutable; historical records cannot be modified
 (SPEC-12, Business Rules). Every review references the original decision.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

@@ -2,6 +2,7 @@
 
 Repositories are interfaces only; implementations belong to Infrastructure.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

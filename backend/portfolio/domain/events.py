@@ -1,4 +1,5 @@
 """Portfolio domain events (SPEC-03, Domain Events)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

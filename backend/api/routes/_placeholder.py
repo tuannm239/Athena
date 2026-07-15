@@ -1,4 +1,5 @@
 """Shared placeholder behavior for endpoints scheduled in later sprints."""
+
 from __future__ import annotations
 
 from typing import NoReturn

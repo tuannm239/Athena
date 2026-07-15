@@ -1,4 +1,5 @@
 """Market Engine — regime, liquidity, breadth, volatility (SPEC-02)."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter

@@ -3,6 +3,7 @@
 Verifies the Sprint 0 gates: the app builds, Swagger/OpenAPI loads,
 and every placeholder business route returns HTTP 501.
 """
+
 from __future__ import annotations
 
 from fastapi.testclient import TestClient

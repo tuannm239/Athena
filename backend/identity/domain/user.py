@@ -1,4 +1,5 @@
 """User entity — fields per SPEC-07 (Core Tables, users)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

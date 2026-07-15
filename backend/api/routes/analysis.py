@@ -1,4 +1,5 @@
 """Company Engine — fundamentals, valuation, quality, catalysts (SPEC-02)."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter

@@ -2,6 +2,7 @@
 
 The Decision stage is deterministic and non-LLM (SPEC-00, LLM Policy; ADR-0003).
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter

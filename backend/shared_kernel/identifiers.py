@@ -3,6 +3,7 @@
 Domain rule: identifiers are opaque, immutable, and comparable only
 within their own type (a SnapshotId is never equal to a RunId).
 """
+
 from __future__ import annotations
 
 import uuid

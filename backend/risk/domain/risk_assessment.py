@@ -2,6 +2,7 @@
 
 Every assessment carries a confidence score (SPEC-11, Risk Levels).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

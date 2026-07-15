@@ -1,4 +1,5 @@
 """Portfolio Engine — allocation, exposure, diversification, sizing (SPEC-02)."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter

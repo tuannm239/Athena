@@ -1,4 +1,5 @@
 """Unit tests for the domain layer (Sprint 1, SPEC-03/04/05/10/11/12)."""
+
 from __future__ import annotations
 
 import dataclasses

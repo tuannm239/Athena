@@ -1,4 +1,5 @@
 """User-defined portfolio constraints (SPEC-03; SPEC-10, Supported Constraints)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

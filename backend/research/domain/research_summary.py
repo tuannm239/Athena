@@ -5,6 +5,7 @@ entities; fields here follow SPEC-01 (Functional Requirements, Research:
 "Generate structured research summaries") and stay minimal until a
 dedicated spec exists. LLM-derived content must carry its sources.
 """
+
 from __future__ import annotations
 
 import uuid

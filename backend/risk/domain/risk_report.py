@@ -3,6 +3,7 @@
 Risk management always takes precedence over return optimization
 (Constitution, Product Principle 2).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

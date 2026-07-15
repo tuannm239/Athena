@@ -5,6 +5,7 @@ Invariants:
 - Portfolio allocation must not exceed 100% (SPEC-03, Invariants).
 - Position tickers are unique within a portfolio.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

@@ -2,6 +2,7 @@
 
 LLM-assisted surfaces only; never decisions (SPEC-00, LLM Policy).
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter

@@ -1,4 +1,5 @@
 """Lineage reference — the reproducibility tuple every artifact must carry."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

@@ -4,6 +4,7 @@ Domain rules:
 - Probability is a Decimal in [0, 1].
 - A ProbabilityDistribution's masses sum to 1 (within tolerance).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

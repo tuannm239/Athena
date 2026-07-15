@@ -7,6 +7,7 @@ application layer can map domain failures to API error codes uniformly
 DomainError extends ValueError to stay compatible with value-object
 validation raising conventions.
 """
+
 from __future__ import annotations
 
 

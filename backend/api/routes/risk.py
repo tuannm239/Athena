@@ -2,6 +2,7 @@
 
 Risk is computed before any return-seeking optimization (Constitution).
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter

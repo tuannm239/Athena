@@ -3,6 +3,7 @@
 Behavioral feedback is advisory only; the Behavior Engine never
 overrides the Decision Kernel (SPEC-12, Business Rules).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

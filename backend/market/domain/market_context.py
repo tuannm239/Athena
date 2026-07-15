@@ -3,6 +3,7 @@
 Business rule (SPEC-05): market regime must be deterministic; every
 regime carries a confidence value.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

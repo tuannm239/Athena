@@ -4,6 +4,7 @@ Domain rules:
 - Money uses Decimal, never float.
 - Arithmetic across currencies is forbidden (raises CurrencyMismatchError).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

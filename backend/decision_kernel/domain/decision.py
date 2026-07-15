@@ -10,6 +10,7 @@ Business rules encoded here (SPEC-03 Invariants, SPEC-04 Business Rules):
 
 This module has no dependency on any LLM gateway (SPEC-00, ADR-0003).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
