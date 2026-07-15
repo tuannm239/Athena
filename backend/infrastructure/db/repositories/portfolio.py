@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from infrastructure.db.engine import session_scope
@@ -72,6 +73,16 @@ def _position_rows(portfolio: Portfolio) -> list[PositionRow]:
     ]
 
 
+def _from_row(row: PortfolioRow) -> Portfolio:
+    return Portfolio(
+        owner_id=UserId(row.user_id),
+        cash_balance=Money(Decimal(row.cash_amount), Currency(row.base_currency)),
+        positions=tuple(_position_from_row(p) for p in row.positions),
+        constraints=_constraints_from_json(row.constraints),
+        id=PortfolioId(row.id),
+    )
+
+
 def _position_from_row(row: PositionRow) -> Position:
     currency = Currency(row.currency)
     return Position(
@@ -125,12 +136,26 @@ class SqlPortfolioRepository(PortfolioRepository):
     def get(self, portfolio_id: PortfolioId) -> Portfolio | None:
         with session_scope(self._sessions) as session:
             row = session.get(PortfolioRow, portfolio_id.value)
-            if row is None:
-                return None
-            return Portfolio(
-                owner_id=UserId(row.user_id),
-                cash_balance=Money(Decimal(row.cash_amount), Currency(row.base_currency)),
-                positions=tuple(_position_from_row(p) for p in row.positions),
-                constraints=_constraints_from_json(row.constraints),
-                id=PortfolioId(row.id),
+            return None if row is None else _from_row(row)
+
+    def list_by_owner(self, owner_id: UserId, *, limit: int, offset: int) -> tuple[Portfolio, ...]:
+        with session_scope(self._sessions) as session:
+            rows = session.scalars(
+                select(PortfolioRow)
+                .where(PortfolioRow.user_id == owner_id.value)
+                .order_by(PortfolioRow.created_at.desc())
+                .limit(limit)
+                .offset(offset)
+            ).all()
+            return tuple(_from_row(r) for r in rows)
+
+    def count_by_owner(self, owner_id: UserId) -> int:
+        with session_scope(self._sessions) as session:
+            return int(
+                session.scalar(
+                    select(func.count())
+                    .select_from(PortfolioRow)
+                    .where(PortfolioRow.user_id == owner_id.value)
+                )
+                or 0
             )

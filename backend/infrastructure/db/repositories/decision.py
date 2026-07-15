@@ -10,6 +10,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from decision_kernel.domain.decision import (
@@ -183,3 +184,20 @@ class SqlDecisionRepository(DecisionRepository):
         with session_scope(self._sessions) as session:
             row = session.get(DecisionRow, decision_id.value)
             return None if row is None else _from_row(row)
+
+    def list(
+        self, *, limit: int, offset: int, status: DecisionStatus | None = None
+    ) -> tuple[Decision, ...]:
+        with session_scope(self._sessions) as session:
+            query = select(DecisionRow).order_by(DecisionRow.created_at.desc())
+            if status is not None:
+                query = query.where(DecisionRow.status == status.value)
+            rows = session.scalars(query.limit(limit).offset(offset)).all()
+            return tuple(_from_row(r) for r in rows)
+
+    def count(self, *, status: DecisionStatus | None = None) -> int:
+        with session_scope(self._sessions) as session:
+            query = select(func.count()).select_from(DecisionRow)
+            if status is not None:
+                query = query.where(DecisionRow.status == status.value)
+            return int(session.scalar(query) or 0)

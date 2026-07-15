@@ -48,7 +48,8 @@ Progress is tracked in `SPRINT_PLAN.md`; per-task detail in `TASK_PLAN.md`; chan
 | 0 | Bootstrap: structure, tooling, Docker, FastAPI 501 skeleton | Done |
 | 1 | Domain model (SPEC-03) | Done |
 | 2 | Persistence: ORM + repositories + Alembic + DuckDB + Redis + CI | Done |
-| 3+ | API/auth, data platform, engines | Planned — see `SPRINT_PLAN.md` |
+| 3 | Application layer, JWT auth, SPEC-08 REST resources | Done |
+| 4+ | Data platform, knowledge graph, engines | Planned — see `SPRINT_PLAN.md` |
 
 Database migrations: `uv run alembic upgrade head` (environment in `backend/infrastructure/alembic`). Persistence integration tests run against SQLite locally and PostgreSQL/Redis in CI.
 

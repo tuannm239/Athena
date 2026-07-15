@@ -13,3 +13,11 @@ from __future__ import annotations
 
 class DomainError(ValueError):
     """A violated business rule or domain invariant."""
+
+
+class NotFoundError(DomainError):
+    """Requested aggregate does not exist (mapped to HTTP 404, SPEC-08)."""
+
+
+class ConflictError(DomainError):
+    """State conflict, e.g. duplicate identity (mapped to HTTP 409, SPEC-08)."""

@@ -19,7 +19,12 @@ No implementation may exist without a row here.
 | SPEC-12 §Biases/Journal/Outputs | Behavior | `behavior.domain` | `BiasKind`, `BehaviorReport`, `DecisionJournalEntry` | `TestBehavior` |
 | SPEC-03 §Research, SPEC-01 §Research | Research | `research.domain` | `ResearchSummary`, `ResearchRepository` | Sprint 2 impl tests |
 | SPEC-07 §users | Identity | `identity.domain` | `User` | `TestIdentity` |
-| SPEC-08 §Principles (skeleton) | API | `api` | `create_app`, routers (501 placeholders) | `tests/integration/test_api.py` |
+| SPEC-08 §Standard Response/Error Codes | API | `api.envelope`, `api.errors` | `Envelope`, `RequestIdMiddleware`, `register_error_handlers` | `test_api.py::TestEnvelope` |
+| SPEC-08 §Authentication (ADR-0009) | Identity | `identity.application`, `infrastructure.security` | `RegisterUser`, `AuthenticateUser`, `Argon2PasswordHasher`, `JwtTokenService`, `SqlCredentialStore` | `test_api.py::TestAuth` |
+| SPEC-08 §Decisions | Decision | `decision_kernel.application`, `api.routes.decision` | `DecisionUseCases`, router | `test_api.py::TestDecisionsResource` |
+| SPEC-08 §Portfolios | Portfolio | `portfolio.application`, `api.routes.portfolio` | `PortfolioUseCases`, router | `test_api.py::TestPortfoliosResource` |
+| SPEC-08 §Companies/Market/Backtesting (contract) | API | `api.routes.{companies,market,backtests}` | routers (501 until engines) | `test_api.py::TestSpecPathsPending` |
+| SPEC-03 events via application layer (ADR-0010) | shared | `shared_kernel.ports`, `infrastructure.events` | `EventPublisher`, `InProcessEventBus` | covered via use-case tests |
 | SPEC-07 §Core Tables/Indexing | Infrastructure | `infrastructure.db.models` | `UserRow`, `PortfolioRow`, `PositionRow`, `DecisionRow`, `EvidenceRow`, `FactorRow` | `tests/integration/test_persistence.py` |
 | SPEC-07 §Audit | Infrastructure | `infrastructure.db.repositories._audit`, `models.AuditRow` | `write_audit`, `AuditRow` | `test_persistence.py::TestDecisionRepository::test_updates_write_audit_records` |
 | SPEC-03 §Repository Interfaces, SPEC-07 (impl) | Infrastructure | `infrastructure.db.repositories` | `SqlDecisionRepository`, `SqlPortfolioRepository`, `SqlUserRepository` | `tests/integration/test_persistence.py` |

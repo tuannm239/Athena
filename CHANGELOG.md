@@ -5,6 +5,30 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Sprint 3 — Application layer, auth & REST API (2026-07-15)
+
+### Added
+- Application layer: identity use cases (RegisterUser, AuthenticateUser),
+  DecisionUseCases (create/get/list/update with lifecycle transitions),
+  PortfolioUseCases; hexagonal ports (PasswordHasher, CredentialStore,
+  TokenService, EventPublisher).
+- JWT authentication (ADR-0009): Argon2id hashing, access/refresh pairs,
+  `/api/v1/auth/register|login|refresh`; `password_hash` migration 0002.
+- SPEC-08 REST resources: decisions (GET list/id, POST, PATCH), portfolios
+  (GET list/id/positions, POST) — protected by bearer auth; standard response
+  envelope with request-id middleware; full error-code mapping
+  (400/401/404/409/422/501).
+- SPEC-08 path alignment: companies, market, backtests routers expose spec
+  paths returning 501 until their engines land; non-spec placeholder routers
+  removed.
+- In-process event bus (ADR-0010); pagination support in repositories.
+- CTO audit reports: PROJECT_STATUS, GAP_ANALYSIS, IMPLEMENTATION_BACKLOG,
+  ARCHITECTURE_REVIEW v2, CODE_QUALITY_REPORT.
+
+### Changed
+- `pyproject`: added `pyjwt`, `argon2-cffi`; B008 lint exemption for FastAPI
+  dependency idiom.
+
 ## Sprint 2 — Persistence (2026-07-15)
 
 ### Added

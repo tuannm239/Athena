@@ -16,6 +16,9 @@ class Settings:
     database_url: str
     redis_url: str
     duckdb_dir: str
+    jwt_secret: str
+    access_token_ttl_seconds: int
+    refresh_token_ttl_seconds: int
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -25,4 +28,7 @@ class Settings:
             ),
             redis_url=os.environ.get("REDIS_URL", "redis://localhost:6379/0"),
             duckdb_dir=os.environ.get("DUCKDB_DIR", "data/snapshots"),
+            jwt_secret=os.environ.get("JWT_SECRET", "dev-only-secret-change-me"),
+            access_token_ttl_seconds=int(os.environ.get("ACCESS_TOKEN_TTL", "900")),
+            refresh_token_ttl_seconds=int(os.environ.get("REFRESH_TOKEN_TTL", "1209600")),
         )

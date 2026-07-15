@@ -15,6 +15,8 @@ dependencies = [
     "duckdb>=1.0",
     "polars>=1.0",
     "pyarrow>=17.0",
+    "pyjwt>=2.9",
+    "argon2-cffi>=23.1",
 ]
 
 [dependency-groups]
@@ -43,6 +45,8 @@ select = ["E", "F", "I", "B"]
 
 [tool.ruff.lint.per-file-ignores]
 "backend/infrastructure/alembic/versions/*" = ["E501"]
+# B008: FastAPI's Depends()/Query() in parameter defaults is the framework idiom.
+"backend/api/**" = ["B008"]
 
 [tool.mypy]
 strict = true

@@ -32,6 +32,7 @@ class UserRow(Base):
     id: Mapped[uuid.UUID] = mapped_column(_UUID, primary_key=True)
     email: Mapped[str] = mapped_column(String(320), unique=True)
     status: Mapped[str] = mapped_column(String(32))
+    password_hash: Mapped[str | None] = mapped_column(String(256))  # ADR-0009
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
 
