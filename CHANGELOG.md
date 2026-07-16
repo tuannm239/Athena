@@ -5,6 +5,14 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Sprint 14 — Backtest Engine (2026-07-16)
+
+### Added
+- ALG-013 (SPEC-09, ADR-0015): deterministic simulator (point-in-time
+  universe, no look-ahead), eleven performance metrics incl. OLS
+  alpha/beta, full report with equity/drawdown curves, monthly returns,
+  trades and failure analysis.
+
 ## Sprint 13 — Behavior Engine (2026-07-16)
 
 ### Added

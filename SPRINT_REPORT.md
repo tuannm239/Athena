@@ -1,8 +1,22 @@
-# SPRINT_REPORT — Sprint 13: Behavior Engine
+# SPRINT_REPORT — Sprint 14: Backtest Engine
 
 Date: 2026-07-16 · Commit: see `git log` (feat(probability)) · Previous: Phase 0 directive intake (`d9d63de`)
 
-## Completed work (Sprint 13)
+## Completed work (Sprint 14)
+
+- Backtest Engine (ALG-013, SPEC-09, ADR-0015): deterministic historical
+  simulator with the full SPEC-09 pipeline — point-in-time universe (no
+  survivorship bias), DSL-driven decisions per bar (no look-ahead: decisions
+  at t earn the t→t+1 return), utility-proportional rebalancing with a
+  position cap, trade recording, and the complete report (equity curve,
+  drawdown curve, monthly returns, trade/decision statistics, failure
+  analysis of the worst periods).
+- All eleven SPEC-09 metrics: CAGR, total return, Sharpe, Sortino, Calmar,
+  max drawdown, win rate, profit factor, annualized turnover, alpha and beta
+  vs benchmark (OLS) — conventions codified in ADR-0015.
+- 10 backtest tests incl. bit-for-bit reproducibility (SPEC-09 validation).
+
+## Sprint 13
 
 - Behavior Engine (ALG-014, SPEC-12, ADR-0014): confidence calibration
   (calibration error + Brier score), three deterministic detectors with
@@ -166,6 +180,6 @@ Sprint 7 Market Regime Engine (RFC-0025) → Sprint 8 Risk Engine (RFC-0027)
 
 ## Recommended next sprint
 
-Sprint 14 — Backtest Engine (SPEC-09, ALG-013): deterministic historical
-simulation over immutable snapshots, DSL-driven decisions, RFC-0027
-metrics, benchmark comparison, bias guards.
+Sprint 15 — Scenario Simulator (ALG-015; SPEC-11 §Scenario Analysis):
+macro/sector/liquidity shocks and portfolio stress tests, then Sprint 16
+production hardening (observability, import-linter, runbooks).
