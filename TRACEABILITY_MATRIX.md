@@ -28,6 +28,8 @@ No implementation may exist without a row here.
 | RFC-0023 §4–§8 | Feature Store | `feature_store.domain`, `feature_store.application`, `infrastructure.db.repositories.feature_registry` | `FeatureMetadata`, `Feature`, `FeatureStatus`, `FeatureRegistry`, `SqlFeatureRegistry`, `FeatureStoreUseCases` | `tests/unit/test_feature_store.py`, `test_data_platform.py::TestFeatureRegistry` |
 | SPEC-06 §Categories/Registration | Factor Library | `feature_store.domain.factor_catalogue` | `canonical_factors` (26 defs) | `test_feature_store.py::TestFactorCatalogue` |
 | RFC-0024 §4–§10 | Data Pipeline | `data_pipeline.domain`, `data_pipeline.application`, `infrastructure.db.repositories.dataset_catalog` | stages, `DatasetSchema`, `QualityReport`, `Lineage`, `DatasetVersion`, DP001–005 errors, `DataPipelineUseCases`, `SqlDatasetCatalog` | `tests/unit/test_data_pipeline.py`, `test_data_platform.py::TestDataPipelineEndToEnd` |
+| RFC-0018 + RFC-0026 (ADR-0006) | Probability | `probability.domain`, `probability.application` | `ProbabilityEngine`, `bayesian_update`, `confidence`, `expected_utility`, `ProbabilityReport`, PE errors, `ProbabilityUseCases` | `tests/unit/test_probability_engine.py`, `test_persistence.py::TestProbabilityOverStoredDecision` |
+| Executive Directive (companies) | Company | `company.domain`, `infrastructure.db.repositories.company`, `api.routes.companies` | `Company`, `SqlCompanyRepository`, profile endpoint | `test_api.py::TestSpecPathsPending::test_unknown_company_profile_is_404` |
 | RFC-0019 §3–§9 (ADR-0007) | Knowledge Graph | `knowledge.domain`, `knowledge.application`, `infrastructure.db.repositories.graph_store` | `Node`, `Edge`, `GraphSnapshot`, `ALLOWED_RELATIONS`, traversal services, `KnowledgeGraphUseCases`, `SqlGraphStore` | `tests/unit/test_knowledge_graph.py`, `tests/integration/test_knowledge_store.py` |
 | SPEC-07 §Core Tables/Indexing | Infrastructure | `infrastructure.db.models` | `UserRow`, `PortfolioRow`, `PositionRow`, `DecisionRow`, `EvidenceRow`, `FactorRow` | `tests/integration/test_persistence.py` |
 | SPEC-07 §Audit | Infrastructure | `infrastructure.db.repositories._audit`, `models.AuditRow` | `write_audit`, `AuditRow` | `test_persistence.py::TestDecisionRepository::test_updates_write_audit_records` |
@@ -42,7 +44,6 @@ No implementation may exist without a row here.
 | Document | Module | Package (planned) | Key classes (planned) | Tests (planned) | Sprint |
 |---|---|---|---|---|---|
 | SPEC-08 | API/Auth | `api`, `identity.application` | envelope, error mapper, JWT auth | endpoint integration tests | 3 |
-| RFC-0018 | Probability | `probability` | `Prior`, `Likelihood`, `Posterior`, updater, `ProbabilityReport` | Bayesian property tests | 6 |
 | RFC-0017 (missing) | DSL | `dsl` | lexer, parser, AST | golden-file parse tests | 7 |
 | RFC-0020 | Compiler | `dsl.compiler` | semantic analyzer, rule validator, IR, graph builder | DC001–007 error tests | 8 |
 | SPEC-04 | Decision Kernel | `decision_kernel.application` | evaluation pipeline, explainability builder | kernel determinism tests | 9 |

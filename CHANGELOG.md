@@ -5,6 +5,18 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Sprint 6 — Probability Engine + Directive intake (2026-07-16)
+
+### Added
+- ADR-0006 evidence model across domain/persistence/API (explicit direction,
+  reliability, explanation, metadata; migration 0005); RFC-0025/0026/0027;
+  companies table + live company profile endpoint; CLAUDE.md regenerated;
+  AGENTS.md created; RiskLevel re-banded per RFC-0027.
+- Probability Engine (RFC-0026): deterministic Bayesian pipeline with
+  freshness/relevance weighting, separate confidence, identity calibration,
+  expected utility, ProbabilityReport with mandatory explanation, PE error
+  codes, and evaluation over stored decisions.
+
 ## Sprint 5 — Knowledge Graph (2026-07-15)
 
 ### Added

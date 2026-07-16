@@ -206,3 +206,18 @@ class TestTimestamps:
         got = loaded.created_at.replace(tzinfo=timezone.utc)
         assert abs((got - decision.created_at).total_seconds()) < 1
         assert isinstance(loaded.created_at, datetime)
+
+
+class TestProbabilityOverStoredDecision:
+    def test_evaluate_decision_report(self, sessions: sessionmaker[Session]) -> None:
+        from probability.application.use_cases import ProbabilityUseCases
+
+        repo = SqlDecisionRepository(sessions)
+        decision = _decision()
+        repo.save(decision)
+        report = ProbabilityUseCases(decisions=repo).evaluate_decision(
+            decision.id, as_of=datetime.now(timezone.utc)
+        )
+        assert report.hypothesis == decision.hypothesis
+        assert report.prior.value == Decimal("0.62")
+        assert len(report.evidence_summary) == 2
