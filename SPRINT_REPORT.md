@@ -1,8 +1,46 @@
-# SPRINT_REPORT — Phase 2: Production Integration (Modules 1–3)
+# SPRINT_REPORT — Phase 2: Production Integration (Modules 1–4)
 
-Date: 2026-07-16 · Basis: 197 source files, 301 tests passed (2 Redis tests
+Date: 2026-07-16 · Basis: 206 source files, 316 tests passed (2 Redis tests
 skipped locally, run in CI), coverage 96% (gate ≥ 90%), ruff + ruff format +
 mypy --strict clean.
+
+## Phase 2 Module 4 — LLM Gateway
+
+**Implementation summary.** New `llm_gateway` context (ADR-0003): a
+frozen `LlmGateway` façade whose public methods are exactly the SPEC-00
+allowed uses — `summarize`, `classify` (label-set enforced),
+`explain` (structured facts in, prose out), `extract_evidence`
+(strict `DIRECTION|category|explanation` line protocol; malformed lines
+dropped, empty results rejected) and `generate_report`. Vendor adapters
+implement the `LlmClient` port over an injectable `HttpTransport`:
+OpenAI, DeepSeek and local OpenAI-compatible servers share one
+chat-completions adapter; Anthropic Messages and Google Gemini have
+their own. `create_client` selects vendors by configuration.
+`FakeLlmClient` provides deterministic, scripted completions for tests.
+
+**Architecture notes.** No decision-shaped method exists — the task
+catalogue (`LlmTask`) is the structural allow-list. The gateway imports
+no guarded context, and guarded contexts cannot import it; both
+directions are machine-enforced (`test_architecture.py`, guarded set
+extended to dsl/probability/market/backtest). Every artifact carries
+`LlmLineage` (source `llm`, model, prompt version, task, timestamp) and
+the lineage source cannot be forged (validated at construction).
+
+**Performance impact.** None on the decision path — the gateway is
+research-side only. HTTP timeouts default to 60 s and are configurable
+per adapter.
+
+**Security impact.** API keys are constructor-injected (Settings/secret
+management wiring arrives with Module 7); no key is ever logged. The
+system prompt pins the assistant to research-only behavior, but the
+enforcement is structural, not prompt-based.
+
+**Test results & coverage.** `tests/unit/test_llm_gateway.py`
+(15 tests): lineage tagging and forgery rejection, allowed-use guards,
+label-set enforcement, evidence-draft parsing/dropping/failure, all
+three vendor payload contracts via a recording transport, malformed
+response → `LlmProviderError`, configuration-driven client selection.
+Suite: 316 passed, 2 skipped; coverage 96%.
 
 ## Phase 2 Module 3 — Production Data Pipeline
 

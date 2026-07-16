@@ -50,6 +50,7 @@ No implementation may exist without a row here.
 | Phase 2 M1 — Data Provider SDK (RFC-0024 sources seam) | Providers | `providers.sdk` | ten capability Protocols, immutable DTOs, `Capability`, `ProviderRegistry` | `tests/unit/test_provider_sdk.py` |
 | Phase 2 M2 — Provider Connectors | Providers | `providers.connectors` | `RetryPolicy`, `TokenBucketRateLimiter`, `TtlCache`, `HealthMonitor`, `StaticProvider`, `LocalFileProvider`, `ResilientPriceProvider` | `tests/unit/test_provider_connectors.py` |
 | Phase 2 M3 — Production Data Pipeline (RFC-0024 §9, ADR-0017) | Data Pipeline / Knowledge | `data_pipeline.application.{sync,facts}`, `knowledge.application.sync` | `ProviderSyncService`, `SyncError`, dataset schemas, `PublishedPriceFacts`, `KnowledgeSyncService` | `tests/unit/test_production_sync.py` |
+| Phase 2 M4 — LLM Gateway (ADR-0003, SPEC-00 LLM Policy) | LLM Gateway | `llm_gateway.domain`, `llm_gateway.application.gateway`, `llm_gateway.adapters`, `llm_gateway.testing` | `LlmClient`, `LlmGateway`, `LlmLineage`, `EvidenceDraft`, vendor adapters, `create_client`, `FakeLlmClient` | `tests/unit/test_llm_gateway.py`, `test_architecture.py` (isolation both directions) |
 
 ## Planned
 

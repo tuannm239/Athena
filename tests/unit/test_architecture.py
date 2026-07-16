@@ -23,8 +23,17 @@ FORBIDDEN_IN_DOMAIN = (
     "httpx",
     "requests",
 )
-LLM_FORBIDDEN = ("openai", "anthropic", "llm_gateway", "langchain")
-LLM_GUARDED_CONTEXTS = ("decision_kernel", "risk", "portfolio", "behavior")
+LLM_FORBIDDEN = ("openai", "anthropic", "google", "llm_gateway", "langchain")
+LLM_GUARDED_CONTEXTS = (
+    "decision_kernel",
+    "risk",
+    "portfolio",
+    "behavior",
+    "dsl",
+    "probability",
+    "market",
+    "backtest",
+)
 
 
 def _imports(path: Path) -> set[str]:
@@ -55,6 +64,18 @@ def test_constitution_contexts_have_no_llm_import_path() -> None:
             if bad:
                 violations.append(f"{path.relative_to(BACKEND)}: {sorted(bad)}")
     assert not violations, "ADR-0003 violated:\n" + "\n".join(violations)
+
+
+def test_llm_gateway_never_reaches_decision_contexts() -> None:
+    """ADR-0003: the gateway can never call into the Decision Kernel or
+    any other guarded context — research flows one way, via reviewed
+    artifacts, never by the gateway driving decisions."""
+    violations: list[str] = []
+    for path in (BACKEND / "llm_gateway").rglob("*.py"):
+        bad = _imports(path) & set(LLM_GUARDED_CONTEXTS)
+        if bad:
+            violations.append(f"{path.relative_to(BACKEND)}: {sorted(bad)}")
+    assert not violations, "llm_gateway imports guarded contexts:\n" + "\n".join(violations)
 
 
 def test_no_sql_in_domain_or_application() -> None:

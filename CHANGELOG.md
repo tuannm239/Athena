@@ -5,6 +5,22 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Phase 2 Module 4 — LLM Gateway (2026-07-16)
+
+### Added
+- `llm_gateway` context (ADR-0003): allowed-use-only façade
+  (summarize / classify / explain / extract_evidence / generate_report —
+  no decision-shaped method exists), every artifact lineage-tagged
+  (source `llm`, model id, prompt version, task, timestamp).
+- Vendor adapters over an injectable HTTP transport: OpenAI, DeepSeek
+  and local OpenAI-compatible servers (one chat-completions dialect),
+  Anthropic Messages, Google Gemini; configuration-driven
+  `create_client` selection; `FakeLlmClient` for tests/offline dev.
+- Architecture tests extended: guarded contexts now also include dsl,
+  probability, market and backtest; new reverse guard proves
+  `llm_gateway` never imports any guarded context.
+- `httpx` promoted to a runtime dependency (gateway transport).
+
 ## Phase 2 Module 3 — Production Data Pipeline (2026-07-16)
 
 ### Added
