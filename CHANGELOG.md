@@ -5,6 +5,30 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Phase 2 Module 2 — Provider Connectors (2026-07-16)
+
+### Added
+- Resilience toolkit (`providers.connectors.resilience`): RetryPolicy with
+  exponential backoff and injectable sleeper, token-bucket rate limiter with
+  injectable clock, TTL cache, per-provider HealthMonitor emitting the SDK
+  `ProviderStatus`.
+- `StaticProvider`: deterministic in-memory connector implementing all ten
+  capability ports (tests, demos, offline development).
+- `LocalFileProvider`: CSV-backed Price/Macro/FX/Sector/Calendar connector
+  (polars) for locally staged datasets.
+- `ResilientPriceProvider` decorator composing cache → rate limit → retry →
+  health over any PriceProvider without the provider knowing.
+
+## Phase 2 Module 1 — Data Provider SDK (2026-07-16)
+
+### Added
+- Ten framework-free capability ports (Price, Fundamental, Macro, News,
+  CorporateAction, Calendar, Sector, ETF, FX, Commodity) with immutable
+  Decimal DTOs (`providers.sdk`).
+- Configuration-driven `ProviderRegistry` keyed by (capability, name);
+  vendors are swappable via configuration only and no provider code can
+  reach the domain (architecture-tested).
+
 ## Sprint 16 — Production hardening (2026-07-16)
 
 ### Added

@@ -47,6 +47,8 @@ No implementation may exist without a row here.
 | SPEC-07 §DuckDB (immutable snapshots) | Infrastructure | `infrastructure.duckdb_store` | `DuckDbSnapshotStore` | `tests/unit/test_infrastructure.py::TestDuckDbSnapshotStore` |
 | SPEC-07 §Redis (ephemeral state) | Infrastructure | `infrastructure.cache` | `RedisCache` | `tests/unit/test_infrastructure.py::TestRedisCache` (CI) |
 | SPEC-07 §users + SPEC-08 auth need | Identity | `identity.domain.repository` | `UserRepository` | `test_persistence.py::TestUserRepository` |
+| Phase 2 M1 — Data Provider SDK (RFC-0024 sources seam) | Providers | `providers.sdk` | ten capability Protocols, immutable DTOs, `Capability`, `ProviderRegistry` | `tests/unit/test_provider_sdk.py` |
+| Phase 2 M2 — Provider Connectors | Providers | `providers.connectors` | `RetryPolicy`, `TokenBucketRateLimiter`, `TtlCache`, `HealthMonitor`, `StaticProvider`, `LocalFileProvider`, `ResilientPriceProvider` | `tests/unit/test_provider_connectors.py` |
 
 ## Planned
 

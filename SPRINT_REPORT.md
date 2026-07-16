@@ -1,4 +1,68 @@
-# SPRINT_REPORT — Sprint 16: Production Hardening
+# SPRINT_REPORT — Phase 2: Production Integration (Modules 1–2)
+
+Date: 2026-07-16 · Basis: 193 source files, 286 tests passed (2 Redis tests
+skipped locally, run in CI), coverage 96% (gate ≥ 90%), ruff + ruff format +
+mypy --strict clean.
+
+## Phase 2 Module 2 — Provider Connectors
+
+**Implementation summary.** `providers.connectors`: a resilience toolkit
+(`RetryPolicy` with exponential backoff and an injectable sleeper for
+deterministic tests; `TokenBucketRateLimiter` with an injectable clock;
+`TtlCache`; `HealthMonitor` that turns consecutive failures into the SDK
+`ProviderStatus`), a deterministic `StaticProvider` implementing all ten
+capability ports over in-memory fixtures, a `LocalFileProvider` reading
+locally staged CSV datasets (prices/macro/fx/sectors/calendar) via polars,
+and a `ResilientPriceProvider` decorator composing
+cache → rate limit → retry → health around any `PriceProvider`.
+
+**Architecture notes.** Connectors are adapters only: they implement the
+SDK ports and never touch domain packages; resilience is composed by
+decoration, so every vendor connector stays independently testable and
+replaceable (Phase 2 rules). No global state — clocks and sleepers are
+injected.
+
+**Performance impact.** TTL caching removes repeat upstream calls inside
+the TTL window; the token bucket bounds outbound request rate; retries are
+capped with exponential backoff, so worst-case added latency is bounded
+and configurable. No hot-path (kernel/DSL) code touched.
+
+**Security impact.** None on auth surfaces. Rate limiting and health
+monitoring reduce blast radius of a misbehaving upstream; no credentials
+are stored (connector configs carry no secrets yet — vendor keys arrive
+with real connectors and will use Settings/secret management from
+Module 7).
+
+**Test results & coverage.** `tests/unit/test_provider_connectors.py`:
+retry/backoff schedule, token-bucket refill, TTL expiry, health
+transitions, static determinism, CSV round-trip, decorator cache/health
+behavior. Suite: 286 passed, 2 skipped; coverage 96%.
+
+## Phase 2 Module 1 — Data Provider SDK
+
+**Implementation summary.** `providers.sdk`: ten framework-free capability
+Protocols (Price, Fundamental, Macro, News, CorporateAction, Calendar,
+Sector, ETF, FX, Commodity), immutable Decimal DTOs, and a
+configuration-driven `ProviderRegistry` (factories keyed by capability +
+name; `resolve()` takes a selection mapping so vendors swap via
+configuration only).
+
+**Architecture notes.** The SDK is the seam RFC-0024 sources plug into;
+domain packages never see provider types (architecture-tested — providers
+is not importable from guarded contexts).
+
+**Test results.** `tests/unit/test_provider_sdk.py` — registry
+resolution/rejection, DTO invariants. Committed as
+`feat(providers): Data Provider SDK (Phase 2, Module 1)`.
+
+## Traceability
+
+Rows for `providers.sdk` and `providers.connectors` added to
+`TRACEABILITY_MATRIX.md`; per-module history in `CHANGELOG.md`.
+
+---
+
+# Previous — Sprint 16: Production Hardening
 
 Date: 2026-07-16 · Commit: see `git log` (feat(probability)) · Previous: Phase 0 directive intake (`d9d63de`)
 
