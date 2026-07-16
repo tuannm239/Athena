@@ -5,6 +5,14 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Sprint 13 — Behavior Engine (2026-07-16)
+
+### Added
+- ALG-014 (SPEC-12, ADR-0014): calibration (error + Brier), configurable
+  detectors (overconfidence, confirmation bias, disposition effect),
+  behavioral KPIs, behavior score, advisory recommendations; insert-only
+  journal persistence (migration 0007).
+
 ## Sprint 12 — Decision Kernel (2026-07-16)
 
 ### Added

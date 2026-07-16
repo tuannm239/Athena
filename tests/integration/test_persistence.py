@@ -221,3 +221,28 @@ class TestProbabilityOverStoredDecision:
         assert report.hypothesis == decision.hypothesis
         assert report.prior.value == Decimal("0.62")
         assert len(report.evidence_summary) == 2
+
+
+class TestJournalRepository:
+    def test_append_and_read_immutable_entries(self, sessions: sessionmaker[Session]) -> None:
+        from behavior.domain.journal import DecisionJournalEntry
+        from behavior.domain.repository import JournalRepository
+        from infrastructure.db.repositories.journal import SqlJournalRepository
+        from shared_kernel.identifiers import DecisionId
+
+        repo: JournalRepository = SqlJournalRepository(sessions)
+        decision_id = DecisionId()
+        entry = DecisionJournalEntry(
+            decision_id=decision_id,
+            original_hypothesis="X outperforms",
+            supporting_evidence=("strong FCF",),
+            counter_evidence=("rich multiple",),
+            expected_outcome="+15% in 12m",
+            actual_outcome="+9% in 12m",
+            lessons_learned="size smaller in consolidation regimes",
+        )
+        repo.append(entry)
+        loaded = repo.for_decision(decision_id)
+        assert len(loaded) == 1
+        assert loaded[0].lessons_learned.startswith("size smaller")
+        assert repo.all_entries()

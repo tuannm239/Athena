@@ -25,7 +25,9 @@ def upgrade() -> None:
     op.alter_column("evidence", "kind", new_column_name="direction")
     op.alter_column("evidence", "confidence", new_column_name="reliability")
     op.alter_column("evidence", "description", new_column_name="explanation")
-    op.add_column("evidence", sa.Column("metadata_json", PortableJSON, nullable=True))
+    op.add_column(
+        "evidence", sa.Column("metadata_json", PortableJSON, nullable=True)
+    )  # tightened to NOT NULL in 0007
     op.execute("UPDATE evidence SET direction = 'CONTRADICTING' WHERE direction = 'COUNTER'")
 
     op.create_table(

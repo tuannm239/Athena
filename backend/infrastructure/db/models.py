@@ -184,6 +184,22 @@ class KgEdgeRow(Base):
     removed_version: Mapped[int | None] = mapped_column(index=True)
 
 
+class JournalRow(Base):
+    """Immutable decision journal entry (SPEC-12) — insert-only."""
+
+    __tablename__ = "journal_entries"
+
+    id: Mapped[uuid.UUID] = mapped_column(_UUID, primary_key=True, default=uuid.uuid4)
+    decision_id: Mapped[uuid.UUID] = mapped_column(_UUID, index=True)
+    original_hypothesis: Mapped[str] = mapped_column(Text)
+    supporting_evidence: Mapped[list[str]] = mapped_column(PortableJSON, default=list)
+    counter_evidence: Mapped[list[str]] = mapped_column(PortableJSON, default=list)
+    expected_outcome: Mapped[str] = mapped_column(Text)
+    actual_outcome: Mapped[str] = mapped_column(Text, default="")
+    lessons_learned: Mapped[str] = mapped_column(Text, default="")
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
 class AuditRow(Base):
     """Immutable audit record (SPEC-07, Audit).
 

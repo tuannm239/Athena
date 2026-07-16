@@ -1,8 +1,22 @@
-# SPRINT_REPORT — Sprint 12: Decision Kernel
+# SPRINT_REPORT — Sprint 13: Behavior Engine
 
 Date: 2026-07-16 · Commit: see `git log` (feat(probability)) · Previous: Phase 0 directive intake (`d9d63de`)
 
-## Completed work (Sprint 12)
+## Completed work (Sprint 13)
+
+- Behavior Engine (ALG-014, SPEC-12, ADR-0014): confidence calibration
+  (calibration error + Brier score), three deterministic detectors with
+  configurable thresholds (OVERCONFIDENCE via confidence-vs-hit-rate gap,
+  CONFIRMATION_BIAS via supporting-evidence share, DISPOSITION_EFFECT via
+  winner/loser holding ratio), behavioral KPIs (average holding, premature
+  exits, review completion), behavior score, and advisory recommendations /
+  learning actions per detection (never overrides the kernel).
+- Journal persistence: `JournalRepository` port + insert-only SQL
+  implementation (`journal_entries`, migration 0007); the 0005
+  metadata column tightened to NOT NULL via batch alter.
+- 13 new behavior tests + journal round-trip integration test.
+
+## Sprint 12
 
 - Decision Kernel (ALG-012, SPEC-04, ADR-0013): the full 11-step pipeline —
   input/evidence validation (supporting + mandatory counter evidence,
@@ -152,6 +166,6 @@ Sprint 7 Market Regime Engine (RFC-0025) → Sprint 8 Risk Engine (RFC-0027)
 
 ## Recommended next sprint
 
-Sprint 13 — Behavior Engine (SPEC-12, ALG-014): journaling service,
-confidence calibration, configurable bias detectors (ADR to document
-heuristics), behavioral KPIs.
+Sprint 14 — Backtest Engine (SPEC-09, ALG-013): deterministic historical
+simulation over immutable snapshots, DSL-driven decisions, RFC-0027
+metrics, benchmark comparison, bias guards.
