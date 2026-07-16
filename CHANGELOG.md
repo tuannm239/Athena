@@ -5,6 +5,15 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Sprint 9 — Portfolio Engine (2026-07-16)
+
+### Added
+- ALG-007 (RFC-0027 §5): Kelly-based position sizing chain with [0,1]
+  factor validation and constraint cap.
+- ALG-008 (SPEC-10): deterministic utility-priority allocator enforcing
+  position/sector/cash-reserve constraints; PortfolioProposal output with
+  violations and explanation.
+
 ## Sprint 8 — Risk Engine (2026-07-16)
 
 ### Added

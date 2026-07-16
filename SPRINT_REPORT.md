@@ -1,8 +1,23 @@
-# SPRINT_REPORT — Sprint 8: Risk Engine
+# SPRINT_REPORT — Sprint 9: Portfolio Engine
 
 Date: 2026-07-16 · Commit: see `git log` (feat(probability)) · Previous: Phase 0 directive intake (`d9d63de`)
 
-## Completed work (Sprint 8)
+## Completed work (Sprint 9)
+
+- ALG-007 Position Sizing (RFC-0027 §5): `kelly_fraction` =
+  max(0, p − (1−p)/b) with b = expected_return/expected_drawdown; full
+  chain Kelly × RiskBudget × LiquidityFactor × Confidence × constraint cap,
+  every factor validated to [0, 1].
+- ALG-008 Portfolio Optimizer (SPEC-10): deterministic greedy allocator in
+  descending expected-utility order (ties by ticker); enforces max position
+  weight, max sector exposure, minimum cash reserve; cash never negative;
+  negative-utility candidates never allocated; `PortfolioProposal` with
+  allocation, cash, utility, drawdown, violations and explanation.
+- 12 new unit tests: Kelly formula/clamp, sizing chain and caps, utility
+  priority + determinism, cash-reserve and sector-cap enforcement,
+  negative-utility exclusion.
+
+## Sprint 8
 
 - ALG-006 Risk Engine (RFC-0027): deterministic Decimal metric calculators —
   annualized historical volatility, historical VaR95/CVaR95 (lower-
@@ -87,6 +102,13 @@ Sprint 7 Market Regime Engine (RFC-0025) → Sprint 8 Risk Engine (RFC-0027)
    the RFC-0026 closed-form; a PyMC-backed calibration layer can replace
    `identity-v1` without contract changes.
 
-## Recommended next sprint
+## Recommended next action
 
-Sprint 9 — Portfolio Engine (SPEC-10 + RFC-0027 §5 position sizing).
+**STOP CONDITION REACHED at Sprint 10 (Decision DSL):** RFC-0017 does not
+exist in the repository (RFC-0021 Plugin SDK and RFC-0022 Event Model are
+also absent). Sprints 10–12 (DSL → Compiler → Kernel) cannot start without
+them per the directive's own rule ("an RFC cannot be implemented because of
+missing mandatory information"). Provide RFC-0017/0021/0022 to unblock;
+Sprint 13 (Behavior) and 14 (Backtest without DSL rules) could be pulled
+forward by explicit approval if desired. Sprint 15 (Scenario Simulator)
+also lacks a specification.
