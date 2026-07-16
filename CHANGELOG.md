@@ -5,6 +5,14 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Sprint 11 — Decision Compiler (2026-07-16)
+
+### Added
+- RFC-0020 back end: immutable IR, DAG Decision Graph with deterministic
+  execution order and DSL009 cycle guard, compile_rules() pipeline with
+  compiler version stamp, deterministic graph evaluator (fact matching,
+  action semantics with unit-interval clamping, tags, explanations).
+
 ## Sprint 10 — Decision DSL front end (2026-07-16)
 
 ### Added

@@ -1,8 +1,23 @@
-# SPRINT_REPORT — Sprint 10: Decision DSL front end
+# SPRINT_REPORT — Sprint 11: Decision Compiler
 
 Date: 2026-07-16 · Commit: see `git log` (feat(probability)) · Previous: Phase 0 directive intake (`d9d63de`)
 
-## Completed work (Sprint 10)
+## Completed work (Sprint 11)
+
+- Decision Compiler back end (RFC-0020, ALG-011): immutable IR (rule id,
+  version, priority, conditions, actions, tags, dependencies, source
+  location), Decision Graph as a DAG with deterministic execution order
+  (priority desc, rule id asc) and a Kahn cycle guard (DSL009),
+  `compile_rules()` pipeline stamped with `athena-dslc/1.0.0`.
+- Deterministic graph evaluator: fact-context matching (numbers, strings,
+  enums, booleans, LIKE with % wildcards; missing facts never match),
+  =/+=/-= action semantics with [0,1] clamping for probability and
+  confidence, ordered tag union, per-rule explanations, matched/unmatched
+  reporting — reproducible execution (RFC-0017 acceptance criteria).
+- 12 compiler tests incl. golden ruleset outcome regression; dsl package
+  coverage 98.6% (RFC gate ≥ 95%).
+
+## Sprint 10
 
 - RFC-0017 v2 persisted to `/rfc/0017-decision-dsl.md`; Sprint 10 unblocked.
 - Decision DSL front end (ALG-010): deterministic lexer (comments, strings,
@@ -118,9 +133,14 @@ Sprint 7 Market Regime Engine (RFC-0025) → Sprint 8 Risk Engine (RFC-0027)
    the RFC-0026 closed-form; a PyMC-backed calibration layer can replace
    `identity-v1` without contract changes.
 
-## Recommended next sprint
+## Recommended next action
 
-Sprint 11 — Decision Compiler (RFC-0020 + RFC-0017 §IR/§Decision Graph):
-IR generation, DAG construction, deterministic compilation to the Decision
-Object shape. RFC-0021 (Plugin SDK) and RFC-0022 (Event Model) remain the
-only missing documents (kernel extension points and durable event delivery).
+**Sprint 12 (Decision Kernel) is gated on a ruling.** SPEC-04 §Extension
+Points requires the kernel to support plugins for new asset classes,
+factor models, probability engines and optimization engines without core
+modification — that contract is RFC-0021 (Plugin SDK), which does not
+exist; RFC-0022 (Event Model) is also absent. Two options:
+(a) provide RFC-0021/0022, or (b) approve implementing the kernel pipeline
+now with hexagonal ports as the extension seam and plugin packaging
+deferred to RFC-0021. Everything else needed by the kernel is ready:
+probability, regime, risk, portfolio engines and the compiled DSL.
