@@ -15,7 +15,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from decision_kernel.domain.decision import Decision, DecisionStatus, DecisionType
-from decision_kernel.domain.evidence import Evidence
+from decision_kernel.domain.evidence import Evidence, EvidenceDirection
 from identity.domain.user import User
 from infrastructure.db.base import Base
 from infrastructure.db.models import AuditRow
@@ -28,7 +28,7 @@ from portfolio.domain.position import Position
 from risk.domain.risk_assessment import RiskAssessment, RiskLevel
 from shared_kernel.measures import Percentage
 from shared_kernel.money import Currency, Money
-from shared_kernel.probability import Confidence, Probability
+from shared_kernel.probability import Confidence, Probability, Reliability
 
 
 @pytest.fixture()
@@ -56,16 +56,19 @@ def _decision() -> Decision:
         Evidence(
             source="10-K",
             category="fundamental",
-            description="strong FCF",
-            confidence=Confidence(Decimal("0.8")),
+            explanation="strong FCF",
+            reliability=Reliability(Decimal("0.8")),
+            direction=EvidenceDirection.SUPPORTING,
+            metadata={"filing": "2025-10K"},
         )
     )
-    d.add_counter_evidence(
+    d.add_evidence(
         Evidence(
             source="street",
             category="valuation",
-            description="rich multiple",
-            confidence=Confidence(Decimal("0.6")),
+            explanation="rich multiple",
+            reliability=Reliability(Decimal("0.6")),
+            direction=EvidenceDirection.CONTRADICTING,
         )
     )
     d.attach_risk_assessment(
@@ -108,8 +111,9 @@ class TestDecisionRepository:
         assert loaded.status is DecisionStatus.APPROVED
         assert loaded.hypothesis == decision.hypothesis
         assert loaded.probability.value == Decimal("0.62")
-        assert [e.description for e in loaded.evidence] == ["strong FCF"]
-        assert [e.description for e in loaded.counter_evidence] == ["rich multiple"]
+        assert [e.explanation for e in loaded.supporting_evidence] == ["strong FCF"]
+        assert [e.explanation for e in loaded.contradicting_evidence] == ["rich multiple"]
+        assert loaded.supporting_evidence[0].metadata["filing"] == "2025-10K"
         assert loaded.risk_assessment is not None
         assert loaded.risk_assessment.level is RiskLevel.MODERATE
         assert loaded.risk_assessment.var == Decimal("0.05")

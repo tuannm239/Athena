@@ -8,12 +8,14 @@ from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session, sessionmaker
 
+from company.domain.repository import CompanyRepository
 from decision_kernel.application.use_cases import DecisionUseCases
 from identity.application.ports import AuthenticationError
 from identity.application.use_cases import AuthenticateUser, RegisterUser
 from identity.domain.user import User
 from infrastructure.config import Settings
 from infrastructure.db.engine import build_engine, build_session_factory
+from infrastructure.db.repositories.company import SqlCompanyRepository
 from infrastructure.db.repositories.credentials import SqlCredentialStore
 from infrastructure.db.repositories.decision import SqlDecisionRepository
 from infrastructure.db.repositories.portfolio import SqlPortfolioRepository
@@ -30,6 +32,7 @@ class Container:
     settings: Settings
     decisions: DecisionUseCases
     portfolios: PortfolioUseCases
+    companies: CompanyRepository
     register_user: RegisterUser
     authenticate: AuthenticateUser
     event_bus: InProcessEventBus
@@ -50,6 +53,7 @@ def build_container(
         settings=cfg,
         decisions=DecisionUseCases(repository=SqlDecisionRepository(sessions), events=bus),
         portfolios=PortfolioUseCases(repository=SqlPortfolioRepository(sessions), events=bus),
+        companies=SqlCompanyRepository(sessions),
         register_user=RegisterUser(users, credentials, hasher),
         authenticate=AuthenticateUser(users, credentials, hasher, tokens),
         event_bus=bus,

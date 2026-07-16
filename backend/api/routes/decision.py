@@ -41,8 +41,9 @@ def _evidence_inputs(items: list[EvidenceIn]) -> tuple[EvidenceInput, ...]:
         EvidenceInput(
             source=item.source,
             category=item.category,
-            description=item.description,
-            confidence=item.confidence,
+            explanation=item.explanation,
+            reliability=item.reliability,
+            direction=item.direction,
         )
         for item in items
     )
@@ -98,7 +99,6 @@ async def create_decision(
             assumptions=tuple(body.assumptions),
             invalidation_conditions=tuple(body.invalidation_conditions),
             evidence=_evidence_inputs(list(body.evidence)),
-            counter_evidence=_evidence_inputs(list(body.counter_evidence)),
         )
     )
     return ok(request, decision_out(decision))
@@ -135,7 +135,6 @@ async def update_decision(
                 else None
             ),
             add_evidence=_evidence_inputs(list(body.add_evidence)),
-            add_counter_evidence=_evidence_inputs(list(body.add_counter_evidence)),
             risk_assessment=risk,
             status=body.status,
             review_note=body.review_note,

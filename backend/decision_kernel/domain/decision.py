@@ -19,7 +19,7 @@ from decimal import Decimal
 from enum import StrEnum
 
 from decision_kernel.domain.events import DecisionCreated, DecisionReviewed, EvidenceAdded
-from decision_kernel.domain.evidence import Evidence
+from decision_kernel.domain.evidence import Evidence, EvidenceDirection
 from risk.domain.risk_assessment import RiskAssessment
 from shared_kernel.events import DomainEvent
 from shared_kernel.exceptions import DomainError
@@ -90,7 +90,6 @@ class Decision:
     status: DecisionStatus = DecisionStatus.DRAFT
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     evidence: tuple[Evidence, ...] = ()
-    counter_evidence: tuple[Evidence, ...] = ()
     risk_assessment: RiskAssessment | None = None
     review_history: tuple[ReviewRecord, ...] = ()
     _events: list[DomainEvent] = field(default_factory=list, repr=False)
@@ -100,17 +99,20 @@ class Decision:
             raise DecisionError("decision requires a hypothesis")
         self._events.append(DecisionCreated(decision_id=self.id))
 
-    # -- evidence -----------------------------------------------------------
+    # -- evidence (ADR-0006: single collection, explicit direction) ---------
 
     def add_evidence(self, item: Evidence) -> None:
         self._mutable_guard()
         self.evidence = (*self.evidence, item)
         self._events.append(EvidenceAdded(decision_id=self.id, evidence_id=item.id))
 
-    def add_counter_evidence(self, item: Evidence) -> None:
-        self._mutable_guard()
-        self.counter_evidence = (*self.counter_evidence, item)
-        self._events.append(EvidenceAdded(decision_id=self.id, evidence_id=item.id))
+    @property
+    def supporting_evidence(self) -> tuple[Evidence, ...]:
+        return tuple(e for e in self.evidence if e.direction is EvidenceDirection.SUPPORTING)
+
+    @property
+    def contradicting_evidence(self) -> tuple[Evidence, ...]:
+        return tuple(e for e in self.evidence if e.direction is EvidenceDirection.CONTRADICTING)
 
     def attach_risk_assessment(self, assessment: RiskAssessment) -> None:
         self._mutable_guard()
@@ -122,10 +124,10 @@ class Decision:
         self._transition(DecisionStatus.UNDER_REVIEW)
 
     def approve(self, note: str = "") -> None:
-        if not self.evidence:
+        if not self.supporting_evidence:
             raise DecisionError("no decision without evidence (SPEC-04)")
-        if not self.counter_evidence:
-            raise DecisionError("counter evidence is mandatory (SPEC-04)")
+        if not self.contradicting_evidence:
+            raise DecisionError("counter evidence is mandatory (SPEC-04, ADR-0006)")
         if self.risk_assessment is None:
             raise DecisionError("every approved decision requires a risk assessment (SPEC-03)")
         if not self.invalidation_conditions:

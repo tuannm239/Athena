@@ -1,128 +1,68 @@
-# CLAUDE.md
+# CLAUDE.md — ATHENA Engineering Constitution (Operational Copy)
 
-# ATHENA Engineering Constitution
+Regenerated from SPEC-00 (`spec/00-engineering-constitution.md`) per the
+Executive Implementation Directive. SPEC-00 is authoritative; this file
+orients agents and contributors working in this repository.
 
 ## Mission
 
-ATHENA is a Financial Decision Intelligence Platform.
+ATHENA is a **Financial Decision Intelligence Platform**. It is **not** a
+trading bot, a stock screener, a chatbot, or a signal generator. It exists to
+improve investment decision quality through explainable, probabilistic, and
+risk-aware reasoning.
 
-It is **not**:
-- a trading bot
-- a chatbot
-- a stock screener
-- a signal generator
+## Product Principles (SPEC-00)
 
-Its purpose is to improve investment decision quality through
-explainable, probabilistic, and risk-aware analysis.
+1. Decision quality over prediction accuracy.
+2. Risk management over return maximization.
+3. Portfolio optimization over single-asset selection.
+4. Every recommendation explainable; every model backtestable; every business
+   rule testable.
 
-## Core Principles
+## LLM Policy (non-negotiable)
 
-1.  Architecture before implementation.
-2.  Domain-Driven Design.
-3.  Clean Architecture.
-4.  Explainability over black-box outputs.
-5.  Risk before return.
-6.  Portfolio before individual stock.
-7.  LLMs never make investment decisions.
+LLMs may summarize, explain, extract, classify, and generate reports.
+LLMs must not produce BUY/SELL decisions, allocate capital, or contain
+business logic. Business logic belongs exclusively to the Decision Kernel
+(architecturally enforced — ADR-0003: `decision_kernel`, `risk`, `portfolio`,
+`behavior` have no import path to any LLM gateway).
 
-## Repository Structure
+## Architecture
 
-``` text
-/spec
-/rfc
-/adr
-/backend
-/frontend
-/infrastructure
-/tests
-/scripts
+DDD + Clean + Hexagonal architecture in a modular monolith (ADR-0001), API
+first, event driven (ADR-0010 interim bus). Bounded contexts map 1:1 to
+packages under `backend/` (ADR-0004): `decision_kernel`, `market`, `company`,
+`portfolio`, `risk`, `behavior`, `research`, `identity`, `knowledge`,
+`feature_store`, `data_pipeline`, plus `shared_kernel`, `api`,
+`infrastructure`. **The domain layer never depends on infrastructure**; no
+SQL outside `infrastructure`; no business logic in controllers.
+
+## Source of Truth
+
+- `/spec` — SPEC-00…12 (constitution, product, architecture, domain, engines)
+- `/rfc` — RFC-0018…0027 (probability, knowledge graph, compiler, feature
+  store, data pipeline, regime/probability/risk parameters)
+- `/adr` — accepted decisions (index: `adr/README.md`)
+- Plans and status: `SPRINT_PLAN.md`, `TASK_PLAN.md`, `PROJECT_STATUS.md`,
+  `TRACEABILITY_MATRIX.md`, `CHANGELOG.md`, `SPRINT_REPORT.md`
+
+If specifications conflict: stop and report; never guess or invent business
+rules. Behavioral feedback is advisory only — the Behavior Engine never
+overrides the Decision Kernel (SPEC-12 v2).
+
+## Technology & Gates
+
+Python 3.13 · FastAPI · SQLAlchemy 2.x · Pydantic v2 · Alembic · PostgreSQL ·
+DuckDB · Redis · Polars. Money and probabilities are Decimal, never float.
+
+```bash
+uv sync                       # install
+uv run pytest --cov=backend   # tests (coverage gate ≥ 90%)
+uv run ruff check . && uv run ruff format --check .   # lint + format (ADR-0011)
+uv run mypy                   # strict typing (100% hints)
+uv run alembic upgrade head   # forward-only migrations
 ```
 
-## Development Workflow
-
-1.  Read all specification files.
-2.  Review architecture.
-3.  Identify missing specifications.
-4.  Create ADRs when needed.
-5.  Build domain models.
-6.  Build application services.
-7.  Build APIs.
-8.  Build UI.
-9.  Add tests.
-10. Wait for review before major architectural changes.
-
-## Decision Pipeline
-
-``` text
-Data
-→ Normalization
-→ Feature Engineering
-→ Knowledge Graph
-→ Market Regime
-→ Sector Analysis
-→ Company Analysis
-→ Probability Update
-→ Risk Assessment
-→ Portfolio Optimization
-→ Behavioral Override
-→ Decision
-→ Explanation
-→ Learning
-```
-
-## LLM Policy
-
-LLMs may:
-- summarize
-- classify
-- explain
-- debate
-- generate documentation
-
-LLMs must not:
-- generate BUY/SELL decisions
-- allocate capital
-- embed business logic
-- bypass Decision Kernel
-
-## Technology
-
-Backend:
-- Python 3.13
-- FastAPI
-- SQLAlchemy 2.x
-- Pydantic v2
-
-Data:
-- PostgreSQL
-- DuckDB
-- Redis
-
-Analytics:
-- Polars
-
-ML:
-- LightGBM
-- XGBoost
-- PyMC
-- Optuna
-
-## Coding Standards
-
--   100% type hints
--   Unit tests required
--   Integration tests required
--   No business logic in controllers
--   No SQL in services
--   API-first
--   Modular architecture
-
-## Deliverables for Sprint 0
-
-Create only:
-- Repository structure
-- Specifications
-- Architecture documents
-- Engineering constitution
-
-Do not implement business logic.
+A change is complete only when: typed, tested (unit + integration),
+lint/format/mypy green, documentation and RFC traceability updated, and an
+ADR exists for any architectural decision.

@@ -20,7 +20,7 @@ from decision_kernel.domain.decision import (
     InvalidDecisionTransition,
 )
 from decision_kernel.domain.events import DecisionCreated, DecisionReviewed, EvidenceAdded
-from decision_kernel.domain.evidence import Evidence
+from decision_kernel.domain.evidence import Evidence, EvidenceDirection
 from identity.domain.user import User
 from market.domain.market_context import MarketContext, Regime
 from portfolio.domain.portfolio import Portfolio, PortfolioError
@@ -35,15 +35,20 @@ from shared_kernel.probability import (
     DistributionError,
     Probability,
     ProbabilityDistribution,
+    Reliability,
 )
 
 
-def evidence(desc: str = "evidence") -> Evidence:
+def evidence(
+    desc: str = "evidence",
+    direction: EvidenceDirection = EvidenceDirection.SUPPORTING,
+) -> Evidence:
     return Evidence(
         source="unit-test",
         category="fundamental",
-        description=desc,
-        confidence=Confidence(Decimal("0.8")),
+        explanation=desc,
+        reliability=Reliability(Decimal("0.8")),
+        direction=direction,
     )
 
 
@@ -146,7 +151,7 @@ class TestDecisionLifecycle(unittest.TestCase):
     def test_approval_requires_risk_assessment(self) -> None:
         d = draft_decision()
         d.add_evidence(evidence())
-        d.add_counter_evidence(evidence("bear case"))
+        d.add_evidence(evidence("bear case", EvidenceDirection.CONTRADICTING))
         d.invalidation_conditions = ("invalidated on guidance cut",)
         d.submit_for_review()
         with self.assertRaises(DecisionError):
@@ -155,7 +160,7 @@ class TestDecisionLifecycle(unittest.TestCase):
     def test_full_lifecycle(self) -> None:
         d = draft_decision()
         d.add_evidence(evidence())
-        d.add_counter_evidence(evidence("bear case"))
+        d.add_evidence(evidence("bear case", EvidenceDirection.CONTRADICTING))
         d.attach_risk_assessment(risk_assessment())
         d.invalidation_conditions = ("invalidated on guidance cut",)
         d.submit_for_review()

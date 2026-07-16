@@ -10,21 +10,22 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 
 from decision_kernel.domain.decision import Decision, DecisionStatus, DecisionType
-from decision_kernel.domain.evidence import Evidence
+from decision_kernel.domain.evidence import Evidence, EvidenceDirection
 from decision_kernel.domain.repository import DecisionRepository
 from risk.domain.risk_assessment import RiskAssessment
 from shared_kernel.exceptions import NotFoundError
 from shared_kernel.identifiers import DecisionId
 from shared_kernel.ports import EventPublisher
-from shared_kernel.probability import Confidence, Probability
+from shared_kernel.probability import Confidence, Probability, Reliability
 
 
 @dataclass(frozen=True, slots=True)
 class EvidenceInput:
     source: str
     category: str
-    description: str
-    confidence: Decimal
+    explanation: str
+    reliability: Decimal
+    direction: EvidenceDirection
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,7 +39,6 @@ class CreateDecisionInput:
     assumptions: tuple[str, ...] = ()
     invalidation_conditions: tuple[str, ...] = ()
     evidence: tuple[EvidenceInput, ...] = ()
-    counter_evidence: tuple[EvidenceInput, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,7 +49,6 @@ class UpdateDecisionInput:
     assumptions: tuple[str, ...] | None = None
     invalidation_conditions: tuple[str, ...] | None = None
     add_evidence: tuple[EvidenceInput, ...] = ()
-    add_counter_evidence: tuple[EvidenceInput, ...] = ()
     risk_assessment: RiskAssessment | None = None
     status: DecisionStatus | None = None
     review_note: str = ""
@@ -67,8 +66,9 @@ def _to_evidence(item: EvidenceInput) -> Evidence:
     return Evidence(
         source=item.source,
         category=item.category,
-        description=item.description,
-        confidence=Confidence(item.confidence),
+        reliability=Reliability(item.reliability),
+        direction=item.direction,
+        explanation=item.explanation,
     )
 
 
@@ -99,8 +99,6 @@ class DecisionUseCases:
         )
         for item in data.evidence:
             decision.add_evidence(_to_evidence(item))
-        for item in data.counter_evidence:
-            decision.add_counter_evidence(_to_evidence(item))
         self.repository.save(decision)
         self.events.publish(decision.pull_events())
         return decision
@@ -131,8 +129,6 @@ class DecisionUseCases:
             decision.invalidation_conditions = data.invalidation_conditions
         for item in data.add_evidence:
             decision.add_evidence(_to_evidence(item))
-        for item in data.add_counter_evidence:
-            decision.add_counter_evidence(_to_evidence(item))
         if data.risk_assessment is not None:
             decision.attach_risk_assessment(data.risk_assessment)
         if data.status is not None:

@@ -95,12 +95,28 @@ class EvidenceRow(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(_UUID, primary_key=True)
     decision_id: Mapped[uuid.UUID] = mapped_column(_UUID, ForeignKey("decisions.id"), index=True)
-    kind: Mapped[str] = mapped_column(String(16))  # SUPPORTING | COUNTER (SPEC-03/04)
+    direction: Mapped[str] = mapped_column(String(16))  # ADR-0006
     source: Mapped[str] = mapped_column(String(256))
     category: Mapped[str] = mapped_column(String(64))
-    description: Mapped[str] = mapped_column(Text)
-    confidence: Mapped[Decimal] = mapped_column(_SCORE)
+    explanation: Mapped[str] = mapped_column(Text)
+    reliability: Mapped[Decimal] = mapped_column(_SCORE)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(PortableJSON, default=dict)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class CompanyRow(Base):
+    __tablename__ = "companies"
+
+    id: Mapped[uuid.UUID] = mapped_column(_UUID, primary_key=True)
+    ticker: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(256))
+    exchange: Mapped[str] = mapped_column(String(32))
+    sector: Mapped[str] = mapped_column(String(128))
+    industry: Mapped[str] = mapped_column(String(128))
+    currency: Mapped[str] = mapped_column(String(3))
+    status: Mapped[str] = mapped_column(String(32))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class FactorRow(Base):

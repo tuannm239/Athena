@@ -69,17 +69,17 @@ def _decision_payload() -> dict[str, Any]:
             {
                 "source": "10-K",
                 "category": "fundamental",
-                "description": "strong FCF",
-                "confidence": "0.8",
-            }
-        ],
-        "counter_evidence": [
+                "explanation": "strong FCF",
+                "reliability": "0.8",
+                "direction": "SUPPORTING",
+            },
             {
                 "source": "street",
                 "category": "valuation",
-                "description": "rich multiple",
-                "confidence": "0.6",
-            }
+                "explanation": "rich multiple",
+                "reliability": "0.6",
+                "direction": "CONTRADICTING",
+            },
         ],
     }
 
@@ -166,7 +166,7 @@ class TestDecisionsResource:
 
         got = client.get(f"/api/v1/decisions/{decision['id']}", headers=headers)
         assert got.status_code == 200
-        assert got.json()["data"]["evidence"][0]["description"] == "strong FCF"
+        assert got.json()["data"]["evidence"][0]["explanation"] == "strong FCF"
 
         page = client.get("/api/v1/decisions?limit=10&offset=0", headers=headers).json()["data"]
         assert page["total"] == 1 and len(page["items"]) == 1
@@ -296,7 +296,6 @@ class TestSpecPathsPending:
             ("GET", "/api/v1/market/context"),
             ("GET", "/api/v1/market/regime"),
             ("GET", "/api/v1/market/sectors"),
-            ("GET", "/api/v1/companies/ABC"),
             ("GET", "/api/v1/companies/ABC/factors"),
             ("GET", "/api/v1/companies/ABC/research"),
             ("POST", "/api/v1/backtests"),
@@ -304,3 +303,8 @@ class TestSpecPathsPending:
         ):
             response = client.request(method, path, headers=headers)
             assert response.status_code == 501, (method, path, response.status_code)
+
+    def test_unknown_company_profile_is_404(self, client: TestClient) -> None:
+        headers = _register_and_login(client)
+        r = client.get("/api/v1/companies/NOPE", headers=headers)
+        assert r.status_code == 404

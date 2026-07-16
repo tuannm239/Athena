@@ -82,13 +82,27 @@ class TestMarketContracts:
 
 
 class TestCompany:
-    def test_requires_ticker(self) -> None:
+    def test_requires_ticker_and_name(self) -> None:
         with pytest.raises(ValueError):
-            Company(ticker="", exchange="HOSE", industry="Steel", sector="Materials")
+            Company(
+                ticker="",
+                name="ABC Corp",
+                exchange="HOSE",
+                sector="Materials",
+                industry="Steel",
+                currency=Currency.VND,
+            )
 
     def test_scores_are_optional(self) -> None:
-        company = Company(ticker="ABC", exchange="HOSE", industry="Steel", sector="Materials")
-        assert company.quality_score is None
+        company = Company(
+            ticker="ABC",
+            name="ABC Corp",
+            exchange="HOSE",
+            sector="Materials",
+            industry="Steel",
+            currency=Currency.VND,
+        )
+        assert company.quality_score is None and company.status == "active"
 
 
 class TestLineage:

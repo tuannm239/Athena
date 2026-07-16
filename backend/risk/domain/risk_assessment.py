@@ -13,9 +13,11 @@ from shared_kernel.probability import Confidence
 
 
 class RiskLevel(StrEnum):
+    """Five levels mapped from the 0–100 risk score (RFC-0027 §2)."""
+
+    VERY_LOW = "VERY_LOW"
     LOW = "LOW"
     MODERATE = "MODERATE"
-    ELEVATED = "ELEVATED"
     HIGH = "HIGH"
     CRITICAL = "CRITICAL"
 

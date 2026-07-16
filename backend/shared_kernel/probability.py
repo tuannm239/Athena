@@ -43,6 +43,19 @@ class Confidence:
             raise ValueError(f"Confidence out of range: {self.value}")
 
 
+@dataclass(frozen=True, slots=True)
+class Reliability:
+    """Trustworthiness of a single evidence item, in [0, 1] (ADR-0006)."""
+
+    value: Decimal
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.value, Decimal):
+            raise TypeError("Reliability.value must be Decimal")
+        if not (Decimal(0) <= self.value <= Decimal(1)):
+            raise ValueError(f"Reliability out of range: {self.value}")
+
+
 class DistributionError(ValueError):
     """Raised when masses do not form a valid distribution."""
 

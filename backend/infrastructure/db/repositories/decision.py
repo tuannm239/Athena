@@ -19,7 +19,7 @@ from decision_kernel.domain.decision import (
     DecisionType,
     ReviewRecord,
 )
-from decision_kernel.domain.evidence import Evidence
+from decision_kernel.domain.evidence import Evidence, EvidenceDirection
 from decision_kernel.domain.repository import DecisionRepository
 from infrastructure.db.engine import session_scope
 from infrastructure.db.models import DecisionRow, EvidenceRow
@@ -27,10 +27,7 @@ from infrastructure.db.repositories._audit import write_audit
 from risk.domain.risk_assessment import RiskAssessment, RiskLevel
 from shared_kernel.identifiers import DecisionId, EvidenceId
 from shared_kernel.measures import PositionSize
-from shared_kernel.probability import Confidence, Probability
-
-_SUPPORTING = "SUPPORTING"
-_COUNTER = "COUNTER"
+from shared_kernel.probability import Confidence, Probability, Reliability
 
 
 def _risk_to_json(assessment: RiskAssessment | None) -> dict[str, Any] | None:
@@ -62,31 +59,31 @@ def _risk_from_json(payload: dict[str, Any] | None) -> RiskAssessment | None:
 
 
 def _evidence_rows(decision: Decision) -> list[EvidenceRow]:
-    rows: list[EvidenceRow] = []
-    for kind, items in ((_SUPPORTING, decision.evidence), (_COUNTER, decision.counter_evidence)):
-        for item in items:
-            rows.append(
-                EvidenceRow(
-                    id=item.id.value,
-                    decision_id=decision.id.value,
-                    kind=kind,
-                    source=item.source,
-                    category=item.category,
-                    description=item.description,
-                    confidence=item.confidence.value,
-                    timestamp=item.timestamp,
-                )
-            )
-    return rows
+    return [
+        EvidenceRow(
+            id=item.id.value,
+            decision_id=decision.id.value,
+            direction=item.direction.value,
+            source=item.source,
+            category=item.category,
+            explanation=item.explanation,
+            reliability=item.reliability.value,
+            metadata_json=dict(item.metadata),
+            timestamp=item.timestamp,
+        )
+        for item in decision.evidence
+    ]
 
 
 def _evidence_from_row(row: EvidenceRow) -> Evidence:
     return Evidence(
         source=row.source,
         category=row.category,
-        description=row.description,
-        confidence=Confidence(Decimal(row.confidence)),
+        reliability=Reliability(Decimal(row.reliability)),
+        direction=EvidenceDirection(row.direction),
+        explanation=row.explanation,
         timestamp=row.timestamp,
+        metadata={str(k): str(v) for k, v in row.metadata_json.items()},
         id=EvidenceId(row.id),
     )
 
@@ -140,8 +137,7 @@ def _from_row(row: DecisionRow) -> Decision:
         invalidation_conditions=tuple(row.invalidation_conditions),
         status=DecisionStatus(row.status),
         created_at=row.created_at,
-        evidence=tuple(_evidence_from_row(e) for e in row.evidence if e.kind == _SUPPORTING),
-        counter_evidence=tuple(_evidence_from_row(e) for e in row.evidence if e.kind == _COUNTER),
+        evidence=tuple(_evidence_from_row(e) for e in row.evidence),
         risk_assessment=_risk_from_json(row.risk_assessment),
         review_history=tuple(
             ReviewRecord(

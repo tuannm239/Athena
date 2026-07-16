@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from api.schemas import (
+    CompanyResponse,
     DecisionResponse,
     EvidenceOut,
     PortfolioResponse,
@@ -10,6 +11,7 @@ from api.schemas import (
     ReviewRecordOut,
     RiskAssessmentModel,
 )
+from company.domain.company import Company
 from decision_kernel.domain.decision import Decision
 from decision_kernel.domain.evidence import Evidence
 from portfolio.domain.portfolio import Portfolio
@@ -22,8 +24,10 @@ def evidence_out(item: Evidence) -> EvidenceOut:
         id=item.id.value,
         source=item.source,
         category=item.category,
-        description=item.description,
-        confidence=item.confidence.value,
+        explanation=item.explanation,
+        reliability=item.reliability.value,
+        direction=item.direction,
+        metadata=dict(item.metadata),
         timestamp=item.timestamp,
     )
 
@@ -59,7 +63,6 @@ def decision_out(decision: Decision) -> DecisionResponse:
         invalidation_conditions=list(decision.invalidation_conditions),
         explanation=decision.explanation,
         evidence=[evidence_out(e) for e in decision.evidence],
-        counter_evidence=[evidence_out(e) for e in decision.counter_evidence],
         risk_assessment=risk_out(decision.risk_assessment),
         review_history=[
             ReviewRecordOut(outcome=r.outcome, at=r.at, note=r.note)
@@ -87,4 +90,18 @@ def portfolio_out(portfolio: Portfolio) -> PortfolioResponse:
             )
             for p in portfolio.positions
         ],
+    )
+
+
+def company_out(company: Company) -> CompanyResponse:
+    return CompanyResponse(
+        id=company.id.value,
+        ticker=company.ticker,
+        name=company.name,
+        exchange=company.exchange,
+        sector=company.sector,
+        industry=company.industry,
+        currency=company.currency,
+        status=company.status,
+        created_at=company.created_at,
     )

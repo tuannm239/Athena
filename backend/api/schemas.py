@@ -15,6 +15,7 @@ from typing import Generic, Literal, TypeVar
 from pydantic import BaseModel, ConfigDict, Field
 
 from decision_kernel.domain.decision import DecisionStatus, DecisionType
+from decision_kernel.domain.evidence import EvidenceDirection
 from market.domain.market_context import Regime
 from risk.domain.risk_assessment import RiskLevel
 from shared_kernel.money import Currency
@@ -78,10 +79,14 @@ class UserResponse(BaseModel):
 
 
 class EvidenceIn(BaseModel):
+    """ADR-0006 evidence: direction is explicit, never inferred."""
+
     source: str = Field(min_length=1, max_length=256)
     category: str = Field(min_length=1, max_length=64)
-    description: str = Field(min_length=1)
-    confidence: Decimal = Field(ge=0, le=1)
+    explanation: str = Field(min_length=1)
+    reliability: Decimal = Field(ge=0, le=1)
+    direction: EvidenceDirection
+    metadata: dict[str, str] = Field(default_factory=dict)
 
 
 class EvidenceOut(EvidenceIn):
@@ -117,7 +122,6 @@ class DecisionCreateRequest(BaseModel):
     assumptions: list[str] = Field(default_factory=list)
     invalidation_conditions: list[str] = Field(default_factory=list)
     evidence: list[EvidenceIn] = Field(default_factory=list)
-    counter_evidence: list[EvidenceIn] = Field(default_factory=list)
 
 
 class DecisionUpdateRequest(BaseModel):
@@ -127,7 +131,6 @@ class DecisionUpdateRequest(BaseModel):
     assumptions: list[str] | None = None
     invalidation_conditions: list[str] | None = None
     add_evidence: list[EvidenceIn] = Field(default_factory=list)
-    add_counter_evidence: list[EvidenceIn] = Field(default_factory=list)
     risk_assessment: RiskAssessmentModel | None = None
     status: DecisionStatus | None = None
     review_note: str = ""
@@ -149,7 +152,6 @@ class DecisionResponse(BaseModel):
     invalidation_conditions: list[str]
     explanation: str | None
     evidence: list[EvidenceOut]
-    counter_evidence: list[EvidenceOut]
     risk_assessment: RiskAssessmentModel | None
     review_history: list[ReviewRecordOut]
     created_at: datetime
@@ -179,6 +181,18 @@ class PortfolioResponse(BaseModel):
     cash: Decimal
     allocation: Decimal
     positions: list[PositionOut]
+
+
+class CompanyResponse(BaseModel):
+    id: uuid.UUID
+    ticker: str
+    name: str
+    exchange: str
+    sector: str
+    industry: str
+    currency: Currency
+    status: str
+    created_at: datetime
 
 
 # -- market (contract only until ALG-001) --------------------------------------
