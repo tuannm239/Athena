@@ -81,7 +81,7 @@ Each sprint ends independently deployable (all gates green, main releasable).
 | 2 | Database & infrastructure: ORM models per SPEC-07, repository implementations, initial Alembic migration, DuckDB snapshot store, Redis adapter, audit records, CI | **Done** — ADR-0005 froze the decision schema |
 | 3 | API & auth: real routers over application services, OAuth2/JWT, standard response envelope, pagination, OpenAPI publish | **Done** — ADR-0009/0010; OpenAPI artifact deferred to CI hardening |
 | 4 | Feature Store + Data Pipeline (RFC-0023/0024) + Factor Library skeleton (SPEC-06) | **Done** |
-| 5 | Knowledge Graph (RFC-0019) | ADR-0007 (graph storage) |
+| 5 | Knowledge Graph (RFC-0019) | **Done** — ADR-0007 |
 | 6 | Probability Engine (RFC-0018) | Ruling C5 (evidence model) |
 | 7 | Decision DSL | **Blocked: RFC-0017 missing (C1)** |
 | 8 | Decision Compiler (RFC-0020) | Sprint 7 |

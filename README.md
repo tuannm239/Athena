@@ -50,7 +50,8 @@ Progress is tracked in `SPRINT_PLAN.md`; per-task detail in `TASK_PLAN.md`; chan
 | 2 | Persistence: ORM + repositories + Alembic + DuckDB + Redis + CI | Done |
 | 3 | Application layer, JWT auth, SPEC-08 REST resources | Done |
 | 4 | Feature Store, Data Pipeline, Factor Library catalogue | Done |
-| 5+ | Knowledge graph, probability engine, decision platform | Planned — see `SPRINT_PLAN.md` |
+| 5 | Knowledge Graph (versioned, explainable traversal) | Done |
+| 6+ | Probability engine, decision platform, engines | Gated — see `SPRINT_PLAN.md` |
 
 Database migrations: `uv run alembic upgrade head` (environment in `backend/infrastructure/alembic`). Persistence integration tests run against SQLite locally and PostgreSQL/Redis in CI.
 

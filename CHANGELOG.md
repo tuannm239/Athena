@@ -5,6 +5,20 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Sprint 5 — Knowledge Graph (2026-07-15)
+
+### Added
+- Knowledge context (RFC-0019): 10 node types (Evidence added by ADR-0007),
+  9 directed relation types validated against the §4 catalogue, mandatory
+  edge provenance, cycle control (explicit `allow_cycle` only).
+- Deterministic reasoning services: FindNeighbors, FindImpacts,
+  FindDependencies, Traverse, shortest path, ExplainRelationship with
+  human-readable path rendering.
+- Versioned `GraphStore` port + PostgreSQL adjacency implementation
+  (ADR-0007): edges carry created/removed version ranges; any historical
+  graph version is reconstructable and queryable.
+- Migration 0004 (`kg_nodes`, `kg_edges`).
+
 ## Sprint 4 — Feature Store & Data Pipeline (2026-07-15)
 
 ### Added

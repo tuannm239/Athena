@@ -146,6 +146,28 @@ class DatasetRow(Base):
     __table_args__ = (Index("uq_datasets_id_version", "dataset_id", "version", unique=True),)
 
 
+class KgNodeRow(Base):
+    __tablename__ = "kg_nodes"
+
+    node_id: Mapped[str] = mapped_column(String(200), primary_key=True)
+    type: Mapped[str] = mapped_column(String(32), index=True)
+    name: Mapped[str] = mapped_column(String(256))
+    attributes: Mapped[dict[str, Any]] = mapped_column(PortableJSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class KgEdgeRow(Base):
+    __tablename__ = "kg_edges"
+
+    id: Mapped[uuid.UUID] = mapped_column(_UUID, primary_key=True, default=uuid.uuid4)
+    source_id: Mapped[str] = mapped_column(String(200), ForeignKey("kg_nodes.node_id"), index=True)
+    target_id: Mapped[str] = mapped_column(String(200), ForeignKey("kg_nodes.node_id"), index=True)
+    relation: Mapped[str] = mapped_column(String(32))
+    provenance: Mapped[str] = mapped_column(String(512))
+    created_version: Mapped[int] = mapped_column(index=True)
+    removed_version: Mapped[int | None] = mapped_column(index=True)
+
+
 class AuditRow(Base):
     """Immutable audit record (SPEC-07, Audit).
 
