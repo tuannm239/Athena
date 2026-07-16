@@ -25,6 +25,9 @@ No implementation may exist without a row here.
 | SPEC-08 §Portfolios | Portfolio | `portfolio.application`, `api.routes.portfolio` | `PortfolioUseCases`, router | `test_api.py::TestPortfoliosResource` |
 | SPEC-08 §Companies/Market/Backtesting (contract) | API | `api.routes.{companies,market,backtests}` | routers (501 until engines) | `test_api.py::TestSpecPathsPending` |
 | SPEC-03 events via application layer (ADR-0010) | shared | `shared_kernel.ports`, `infrastructure.events` | `EventPublisher`, `InProcessEventBus` | covered via use-case tests |
+| RFC-0023 §4–§8 | Feature Store | `feature_store.domain`, `feature_store.application`, `infrastructure.db.repositories.feature_registry` | `FeatureMetadata`, `Feature`, `FeatureStatus`, `FeatureRegistry`, `SqlFeatureRegistry`, `FeatureStoreUseCases` | `tests/unit/test_feature_store.py`, `test_data_platform.py::TestFeatureRegistry` |
+| SPEC-06 §Categories/Registration | Factor Library | `feature_store.domain.factor_catalogue` | `canonical_factors` (26 defs) | `test_feature_store.py::TestFactorCatalogue` |
+| RFC-0024 §4–§10 | Data Pipeline | `data_pipeline.domain`, `data_pipeline.application`, `infrastructure.db.repositories.dataset_catalog` | stages, `DatasetSchema`, `QualityReport`, `Lineage`, `DatasetVersion`, DP001–005 errors, `DataPipelineUseCases`, `SqlDatasetCatalog` | `tests/unit/test_data_pipeline.py`, `test_data_platform.py::TestDataPipelineEndToEnd` |
 | SPEC-07 §Core Tables/Indexing | Infrastructure | `infrastructure.db.models` | `UserRow`, `PortfolioRow`, `PositionRow`, `DecisionRow`, `EvidenceRow`, `FactorRow` | `tests/integration/test_persistence.py` |
 | SPEC-07 §Audit | Infrastructure | `infrastructure.db.repositories._audit`, `models.AuditRow` | `write_audit`, `AuditRow` | `test_persistence.py::TestDecisionRepository::test_updates_write_audit_records` |
 | SPEC-03 §Repository Interfaces, SPEC-07 (impl) | Infrastructure | `infrastructure.db.repositories` | `SqlDecisionRepository`, `SqlPortfolioRepository`, `SqlUserRepository` | `tests/integration/test_persistence.py` |
@@ -38,9 +41,6 @@ No implementation may exist without a row here.
 | Document | Module | Package (planned) | Key classes (planned) | Tests (planned) | Sprint |
 |---|---|---|---|---|---|
 | SPEC-08 | API/Auth | `api`, `identity.application` | envelope, error mapper, JWT auth | endpoint integration tests | 3 |
-| RFC-0023 | Feature Store | `feature_store` | `FeatureMetadata`, `FeatureRegistry`, lifecycle service | registry/lifecycle unit tests | 4 |
-| RFC-0024 | Data Pipeline | `data_pipeline` | stage framework, `QualityReport`, lineage | quarantine/publish tests | 4 |
-| SPEC-06 | Factor Library | `feature_store.factors` | factor metadata + validation suite | registration tests | 4 |
 | RFC-0019 | Knowledge Graph | `knowledge` | node/edge model, `GraphStore` port, traversal services | deterministic traversal tests | 5 |
 | RFC-0018 | Probability | `probability` | `Prior`, `Likelihood`, `Posterior`, updater, `ProbabilityReport` | Bayesian property tests | 6 |
 | RFC-0017 (missing) | DSL | `dsl` | lexer, parser, AST | golden-file parse tests | 7 |

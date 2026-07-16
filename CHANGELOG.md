@@ -5,6 +5,25 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Sprint 4 — Feature Store & Data Pipeline (2026-07-15)
+
+### Added
+- Feature Store context (RFC-0023): `FeatureMetadata` (semver-validated),
+  lifecycle Draft→Validated→Published→Deprecated→Archived with publication
+  gates (docs, tests, benchmark, owner), `FeatureRegistry` port + SQL
+  implementation enforcing published-version immutability, read APIs
+  (Get/GetVersion/List/Search), idempotent SPEC-06 factor catalogue seeding
+  (26 factors across 7 categories).
+- Data Pipeline context (RFC-0024): deterministic stages
+  ingest→validate→normalize→quality with quarantine (nulls, duplicate keys,
+  future timestamps), quality reports (completeness/accuracy/freshness/
+  consistency/uniqueness), DP001–DP005 error codes, record-level lineage,
+  `DatasetCatalog` port + SQL implementation, public interfaces RunPipeline/
+  ValidateDataset/PublishDataset/RollbackDataset/GenerateQualityReport;
+  datasets persist as immutable DuckDB snapshots; failed datasets never
+  publish.
+- Migration 0003 (`feature_definitions`, `datasets`).
+
 ## Sprint 3 — Application layer, auth & REST API (2026-07-15)
 
 ### Added

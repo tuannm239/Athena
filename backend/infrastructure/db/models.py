@@ -116,6 +116,36 @@ class FactorRow(Base):
     __table_args__ = (Index("ix_factors_factor_id_version", "factor_id", "version"),)
 
 
+class FeatureDefinitionRow(Base):
+    __tablename__ = "feature_definitions"
+
+    id: Mapped[uuid.UUID] = mapped_column(_UUID, primary_key=True, default=uuid.uuid4)
+    feature_id: Mapped[str] = mapped_column(String(128), index=True)
+    version: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(16), index=True)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(PortableJSON)
+    registered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+    __table_args__ = (
+        Index("uq_feature_definitions_id_version", "feature_id", "version", unique=True),
+    )
+
+
+class DatasetRow(Base):
+    __tablename__ = "datasets"
+
+    id: Mapped[uuid.UUID] = mapped_column(_UUID, primary_key=True, default=uuid.uuid4)
+    dataset_id: Mapped[str] = mapped_column(String(128), index=True)
+    version: Mapped[str] = mapped_column(String(64))
+    snapshot_id: Mapped[str] = mapped_column(String(200))
+    status: Mapped[str] = mapped_column(String(16), index=True)
+    lineage: Mapped[dict[str, Any]] = mapped_column(PortableJSON)
+    quality: Mapped[dict[str, Any]] = mapped_column(PortableJSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+    __table_args__ = (Index("uq_datasets_id_version", "dataset_id", "version", unique=True),)
+
+
 class AuditRow(Base):
     """Immutable audit record (SPEC-07, Audit).
 
