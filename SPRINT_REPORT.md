@@ -1,8 +1,23 @@
-# SPRINT_REPORT — Sprint 6: Probability Engine
+# SPRINT_REPORT — Sprint 7: Market Regime Engine
 
 Date: 2026-07-16 · Commit: see `git log` (feat(probability)) · Previous: Phase 0 directive intake (`d9d63de`)
 
-## Completed work
+## Completed work (Sprint 7)
+
+- ALG-001 Market Regime Detection (RFC-0025): `market_score` (0.30/0.20/
+  0.20/0.15/0.15 weights, volatility inverted, weights renormalized over
+  present inputs), `classify` (80/60/40 bands, inclusive lower bounds),
+  `regime_confidence` (WeightedConsistency × DataCompleteness), and
+  `evaluate_regime` producing SPEC-05 MarketContext.
+- `MarketUseCases`: evaluates, persists the latest context through the
+  MarketRepository port, emits `MarketRegimeChanged` only on regime change.
+- Adapters: `InMemoryMarketRepository` (tests/single-process) and
+  `RedisMarketRepository` (SPEC-07 short-lived market context, TTL 1 day).
+- 19 new unit tests: formula, bands (parametrized boundaries), all four
+  regimes reachable, missing-input and dispersion confidence effects,
+  determinism, event-on-change semantics.
+
+## Previous sprint (6)
 
 - **Phase 0 (directive intake, `d9d63de`):** ADR-0006 evidence model applied
   end-to-end (domain, persistence, API, migration 0005); RFC-0025/0026/0027
@@ -61,4 +76,4 @@ Sprint 7 Market Regime Engine (RFC-0025) → Sprint 8 Risk Engine (RFC-0027)
 
 ## Recommended next sprint
 
-Sprint 7 — Market Regime Engine (RFC-0025): fully specified, no blockers.
+Sprint 8 — Risk Engine (RFC-0027): fully specified, no blockers.

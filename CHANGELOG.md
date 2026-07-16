@@ -5,6 +5,14 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Sprint 7 — Market Regime Engine (2026-07-16)
+
+### Added
+- ALG-001 (RFC-0025): deterministic MarketScore, regime classification
+  bands, WeightedConsistency × DataCompleteness confidence, MarketContext
+  output; MarketRegimeChanged emitted only on regime change; in-memory and
+  Redis MarketRepository adapters (SPEC-07 short-lived context).
+
 ## Sprint 6 — Probability Engine + Directive intake (2026-07-16)
 
 ### Added
