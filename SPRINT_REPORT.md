@@ -1,8 +1,24 @@
-# SPRINT_REPORT — Sprint 9: Portfolio Engine
+# SPRINT_REPORT — Sprint 10: Decision DSL front end
 
 Date: 2026-07-16 · Commit: see `git log` (feat(probability)) · Previous: Phase 0 directive intake (`d9d63de`)
 
-## Completed work (Sprint 9)
+## Completed work (Sprint 10)
+
+- RFC-0017 v2 persisted to `/rfc/0017-decision-dsl.md`; Sprint 10 unblocked.
+- Decision DSL front end (ALG-010): deterministic lexer (comments, strings,
+  dotted identifiers, source locations, DSL001), recursive-descent parser for
+  the full v2 grammar (precedence OR<AND<NOT<parens, metadata, actions with
+  =/+=/-=, TAG, EXPLAIN; DSL002/010/011/012), immutable AST per the RFC node
+  list, extensible property schema over the twelve root objects (Feature ids
+  registered dynamically from the Feature Store), and a semantic analyzer
+  enforcing DSL003–DSL008 and DSL013–DSL015.
+- Grammar note codified: IN/NOT IN/BETWEEN are not expressible with the v2
+  single-literal `condition` rule and report DSL002 until a grammar revision
+  adds list/range literals.
+- 47 DSL tests incl. the RFC golden example; dsl package coverage 99%
+  (RFC gate ≥ 95%).
+
+## Sprint 9
 
 - ALG-007 Position Sizing (RFC-0027 §5): `kelly_fraction` =
   max(0, p − (1−p)/b) with b = expected_return/expected_drawdown; full
@@ -102,13 +118,9 @@ Sprint 7 Market Regime Engine (RFC-0025) → Sprint 8 Risk Engine (RFC-0027)
    the RFC-0026 closed-form; a PyMC-backed calibration layer can replace
    `identity-v1` without contract changes.
 
-## Recommended next action
+## Recommended next sprint
 
-**STOP CONDITION REACHED at Sprint 10 (Decision DSL):** RFC-0017 does not
-exist in the repository (RFC-0021 Plugin SDK and RFC-0022 Event Model are
-also absent). Sprints 10–12 (DSL → Compiler → Kernel) cannot start without
-them per the directive's own rule ("an RFC cannot be implemented because of
-missing mandatory information"). Provide RFC-0017/0021/0022 to unblock;
-Sprint 13 (Behavior) and 14 (Backtest without DSL rules) could be pulled
-forward by explicit approval if desired. Sprint 15 (Scenario Simulator)
-also lacks a specification.
+Sprint 11 — Decision Compiler (RFC-0020 + RFC-0017 §IR/§Decision Graph):
+IR generation, DAG construction, deterministic compilation to the Decision
+Object shape. RFC-0021 (Plugin SDK) and RFC-0022 (Event Model) remain the
+only missing documents (kernel extension points and durable event delivery).

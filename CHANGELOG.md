@@ -5,6 +5,14 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Sprint 10 — Decision DSL front end (2026-07-16)
+
+### Added
+- RFC-0017 v2 committed; DSL context: deterministic lexer, recursive-descent
+  parser (full v2 grammar), immutable AST, extensible property schema over
+  the 12 root objects, semantic analyzer with DSL001–DSL015 error codes;
+  golden example test; dsl package coverage 99%.
+
 ## Sprint 9 — Portfolio Engine (2026-07-16)
 
 ### Added
