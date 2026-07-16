@@ -15,6 +15,7 @@ from api.envelope import RequestIdMiddleware
 from api.errors import register_error_handlers
 from api.routes import auth, backtests, companies, decision, market, portfolio
 from infrastructure.config import Settings
+from infrastructure.observability import configure_logging
 
 API_V1_PREFIX = "/api/v1"
 
@@ -23,6 +24,7 @@ def create_app(
     settings: Settings | None = None,
     session_factory: sessionmaker[Session] | None = None,
 ) -> FastAPI:
+    configure_logging()
     app = FastAPI(
         title="ATHENA",
         summary="Financial Decision Intelligence Platform",

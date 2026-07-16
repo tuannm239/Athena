@@ -14,6 +14,7 @@ an identical Decision Object. Engines are injected behind Protocols
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
@@ -32,6 +33,8 @@ from probability.domain.report import ProbabilityReport
 from risk.domain.risk_assessment import RiskAssessment
 from shared_kernel.exceptions import DomainError
 from shared_kernel.probability import Confidence, Probability
+
+_kernel_log = logging.getLogger("athena.decision_kernel")
 
 
 class KernelError(DomainError):
@@ -166,7 +169,14 @@ class DecisionKernel:
         # 10: SPEC-04 §Explainability — six facets, every claim traceable.
         explanation = self._explain(decision, report, outcome, risk)
 
-        # 11: the Decision Object (RFC-0020 §6).
+        # 11: the Decision Object (RFC-0020 §6) — logged for decision-trace.
+        _kernel_log.info(
+            "decision evaluated",
+            extra={
+                "decision_id": str(decision.id),
+                "request_id": None,
+            },
+        )
         return DecisionObject(
             decision_id=decision.id,
             hypothesis=decision.hypothesis,

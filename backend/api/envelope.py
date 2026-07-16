@@ -11,6 +11,9 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import Response
 
 from api.schemas import ApiError, Envelope
+from infrastructure.observability import RequestTimer, get_logger
+
+_access_log = get_logger("api.access")
 
 T = TypeVar("T")
 
@@ -43,6 +46,17 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         request.state.request_id = request.headers.get("X-Request-ID", uuid.uuid4().hex)
+        timer = RequestTimer()
         response = await call_next(request)
         response.headers["X-Request-ID"] = request.state.request_id
+        _access_log.info(
+            "request",
+            extra={
+                "request_id": request.state.request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": response.status_code,
+                "duration_ms": timer.duration_ms,
+            },
+        )
         return response

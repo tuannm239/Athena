@@ -1,8 +1,21 @@
-# SPRINT_REPORT — Sprint 15: Scenario Simulator
+# SPRINT_REPORT — Sprint 16: Production Hardening
 
 Date: 2026-07-16 · Commit: see `git log` (feat(probability)) · Previous: Phase 0 directive intake (`d9d63de`)
 
-## Completed work (Sprint 15)
+## Completed work (Sprint 16)
+
+- Observability (B-31): structured JSON logging (`athena.*` loggers) with
+  request-id access logs on every API call (echoed via X-Request-ID) and
+  decision-id correlation logged by the kernel — decision-trace end-to-end.
+- Architecture boundary tests (machine-enforced): domain layer framework-
+  free, application layer never imports infrastructure, no SQLAlchemy in
+  domain/application, ADR-0003 LLM isolation for the four guarded contexts.
+- `docs/RUNBOOK.md`: deployment, forward-only migrations, SPEC-07 backup/
+  WAL/restore-drill procedures, observability and incident basics.
+- PROJECT_STATUS refreshed (~85% of specified scope; open items are
+  exogenous: RFC-0021/0022, data feeds, roles/API keys, frontend).
+
+## Sprint 15
 
 - Scenario Simulator (ALG-015; SPEC-11 §Scenario Analysis; ADR-0016):
   `Scenario` value object (market shock, per-sector shocks, liquidity
@@ -189,8 +202,9 @@ Sprint 7 Market Regime Engine (RFC-0025) → Sprint 8 Risk Engine (RFC-0027)
    the RFC-0026 closed-form; a PyMC-backed calibration layer can replace
    `identity-v1` without contract changes.
 
-## Recommended next sprint
+## Recommended next action
 
-Sprint 16 — Production hardening: observability (structured logging with
-request/decision correlation), import-linter boundary contracts in CI,
-operational runbook (SPEC-07 §Backup), final status refresh.
+Directive sprint plan complete (0–16). To reach full production launch:
+provide RFC-0021/0022, connect real market-data providers (RFC-0024
+sources) to light up /market, factor values and ALG-002 calculations, and
+decide auth roles/API keys (ADR-0009 deferrals).

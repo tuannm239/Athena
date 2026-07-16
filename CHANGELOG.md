@@ -5,6 +5,14 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Sprint 16 — Production hardening (2026-07-16)
+
+### Added
+- Structured JSON logging with request-id access logs and decision-id
+  correlation; architecture boundary tests (domain purity, application/
+  infrastructure separation, LLM isolation); operations runbook
+  (docs/RUNBOOK.md); PROJECT_STATUS refresh.
+
 ## Sprint 15 — Scenario Simulator (2026-07-16)
 
 ### Added

@@ -1,48 +1,43 @@
 # PROJECT_STATUS — ATHENA
 
-Audit date: 2026-07-15 · Auditor: Chief Software Architect session
-Basis: full repository read (131 tracked files, 2 947 Python LOC, 57 test functions).
+Updated: 2026-07-16 (Sprint 16). Basis: 181 source files, 272 tests,
+coverage 96% (gate ≥ 90%), migrations 0001–0007, CI green.
 
 ## Completion
 
-**Overall: ~27%** of the specified platform (weighted by SPRINT_PLAN epics;
-foundation phases are complete, all decision-platform algorithms remain).
+**Backend platform: ~85%** of the specified scope. All sixteen directive
+sprints are implemented; remaining work is exogenous (missing RFCs, data
+feeds, frontend).
 
-| Layer | Completion | Notes |
-|---|---|---|
-| Foundation (repo, tooling, CI, Docker) | 100% | CI added Sprint 2 |
-| Domain layer (SPEC-03) | 90% | entities/VOs/events/repos done; domain services (DecisionEvaluator, ProbabilityCalculator, …) pending their engines |
-| Infrastructure (SPEC-07) | 85% | models/repos/migration/DuckDB/Redis done; companies storage unresolved; backup ops deferred to Sprint 15 |
-| Application layer | 0% | no use cases yet |
-| REST API (SPEC-08) | 15% | 501 skeleton + OpenAPI; no auth/envelope/resources |
-| Feature Store (RFC-0023) | 5% | `factors` table only |
-| Data Pipeline (RFC-0024) | 0% | |
-| Knowledge Graph (RFC-0019) | 0% | |
-| Probability Engine (RFC-0018) | 0% | |
-| DSL/Compiler (RFC-0017/0020) | 0% | RFC-0017 **missing** |
-| Decision Kernel (SPEC-04) | 25% | aggregate + invariants done; evaluation pipeline pending |
-| Market/Risk/Portfolio/Behavior engines | 15% | domain contracts done; algorithms pending |
-| Backtest (SPEC-09) | 0% | blocked partially by RFC-0017 |
-| Frontend | 0% | out of current scope |
+| Capability | State |
+|---|---|
+| Foundation, persistence, auth, SPEC-08 API | **Done** (Sprints 0–3) |
+| Feature Store, Data Pipeline, Factor catalogue | **Done** (Sprint 4) |
+| Knowledge Graph (versioned, explainable) | **Done** (Sprint 5) |
+| Probability Engine (RFC-0026) | **Done** (Sprint 6) |
+| Market Regime Engine (RFC-0025, ALG-001) | **Done** (Sprint 7) |
+| Risk Engine (RFC-0027, ALG-006) | **Done** (Sprint 8) |
+| Position Sizing + Optimizer (ALG-007/008) | **Done** (Sprint 9) |
+| Decision DSL + Compiler (RFC-0017/0020, ALG-010/011) | **Done** (Sprints 10–11, dsl coverage 98.6%) |
+| Decision Kernel (SPEC-04, ALG-012, ADR-0013) | **Done** (Sprint 12) |
+| Behavior Engine (SPEC-12, ALG-014, ADR-0014) | **Done** (Sprint 13) |
+| Backtest Engine (SPEC-09, ALG-013, ADR-0015) | **Done** (Sprint 14) |
+| Scenario Simulator (ALG-015, ADR-0016) | **Done** (Sprint 15) |
+| Hardening: structured logging + correlation ids, architecture boundary tests, runbook | **Done** (Sprint 16) |
 
-## Sprint Status (SPRINT_PLAN.md)
+## Known open items (not blocking the implemented scope)
 
-| Sprint | State | Commit |
-|---|---|---|
-| 0 Bootstrap | Done | `49ed73a` |
-| 1 Domain | Done | `a68ae33` |
-| 2 Persistence | Done | `b6a5c0e` |
-| 3 API & Auth | Next | — |
-| 4–6 Data platform, KG, Probability | Ready | — |
-| 7–9 DSL, Compiler, Kernel | **Blocked** (RFC-0017/0021/0022 missing) | — |
-| 10–15 Engines, integration, hardening | Pending | — |
+1. **RFC-0021 Plugin SDK / RFC-0022 Event Model** — kernel extension seam
+   (ADR-0013) and interim in-process bus (ADR-0010) await them.
+2. **Market data feeds** — RFC-0024 sources are specified but no external
+   provider adapters exist; /market and factor-value endpoints stay 501
+   until data lands. ALG-002 factor *calculations* need those feeds.
+3. **Auth roles & API keys** (ADR-0009 deferrals), Notification context
+   (C3/ADR-0012), PyMC-backed calibration (replaces identity-v1), frontend
+   (Next.js), LLM Gateway + Research Copilot surfaces.
 
-## Implementation Summary
+## Traceability
 
-Nine bounded contexts with a clean domain layer (aggregate invariants encode
-SPEC-03/04 business rules), a lossless persistence layer with immutable audit
-records, immutable DuckDB snapshots, Redis ephemeral state, Alembic
-migrations, and a fully green quality gate: ruff + ruff format + mypy strict
-(80 files) + pytest (55 passed, 2 Redis tests CI-only) + coverage 94.2%
-(gate ≥ 90%). Five ADRs govern deviations and rulings; every implemented
-module is traceable in TRACEABILITY_MATRIX.md.
+Every implemented module has a row in `TRACEABILITY_MATRIX.md`; ADRs
+0001–0016 (index `adr/README.md`); per-sprint history in `CHANGELOG.md`;
+latest sprint detail in `SPRINT_REPORT.md`; operations in `docs/RUNBOOK.md`.
