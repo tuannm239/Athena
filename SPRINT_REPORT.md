@@ -1,8 +1,21 @@
-# SPRINT_REPORT — Sprint 7: Market Regime Engine
+# SPRINT_REPORT — Sprint 8: Risk Engine
 
 Date: 2026-07-16 · Commit: see `git log` (feat(probability)) · Previous: Phase 0 directive intake (`d9d63de`)
 
-## Completed work (Sprint 7)
+## Completed work (Sprint 8)
+
+- ALG-006 Risk Engine (RFC-0027): deterministic Decimal metric calculators —
+  annualized historical volatility, historical VaR95/CVaR95 (lower-
+  interpolation quantile), maximum drawdown, downside deviation, days to
+  liquidate; risk score composition with directive weights and caps;
+  RFC-0027 level bands VERY_LOW…CRITICAL; assessment confidence
+  min(1, n/252); `build_assessment` and `build_report` (mandatory
+  explanation; risk-budget violation reporting per SPEC-11 rule 2).
+- 19 new unit tests: regression values on a fixed series, CVaR ≥ VaR,
+  known drawdown path, zero-variance series, band boundaries, score
+  boundedness/monotonicity, budget violations, determinism.
+
+## Sprint 7
 
 - ALG-001 Market Regime Detection (RFC-0025): `market_score` (0.30/0.20/
   0.20/0.15/0.15 weights, volatility inverted, weights renormalized over
@@ -76,4 +89,4 @@ Sprint 7 Market Regime Engine (RFC-0025) → Sprint 8 Risk Engine (RFC-0027)
 
 ## Recommended next sprint
 
-Sprint 8 — Risk Engine (RFC-0027): fully specified, no blockers.
+Sprint 9 — Portfolio Engine (SPEC-10 + RFC-0027 §5 position sizing).

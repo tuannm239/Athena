@@ -5,6 +5,14 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Sprint 8 — Risk Engine (2026-07-16)
+
+### Added
+- ALG-006 (RFC-0027): volatility/VaR95/CVaR95/drawdown/downside-deviation/
+  liquidity calculators (pure Decimal, 252-day lookback), weighted risk
+  score with caps, five-level bands, assessment confidence min(1, n/252),
+  RiskAssessment/RiskReport builders with risk-budget violation reporting.
+
 ## Sprint 7 — Market Regime Engine (2026-07-16)
 
 ### Added
