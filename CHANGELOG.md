@@ -5,6 +5,13 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Sprint 15 — Scenario Simulator (2026-07-16)
+
+### Added
+- ALG-015 (SPEC-11, ADR-0016): configurable Scenario shocks, four built-in
+  SPEC-11 parameter sets + user-defined scenarios, deterministic portfolio
+  stress testing with per-position impacts and stressed liquidity.
+
 ## Sprint 14 — Backtest Engine (2026-07-16)
 
 ### Added

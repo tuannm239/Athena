@@ -1,8 +1,19 @@
-# SPRINT_REPORT — Sprint 14: Backtest Engine
+# SPRINT_REPORT — Sprint 15: Scenario Simulator
 
 Date: 2026-07-16 · Commit: see `git log` (feat(probability)) · Previous: Phase 0 directive intake (`d9d63de`)
 
-## Completed work (Sprint 14)
+## Completed work (Sprint 15)
+
+- Scenario Simulator (ALG-015; SPEC-11 §Scenario Analysis; ADR-0016):
+  `Scenario` value object (market shock, per-sector shocks, liquidity
+  haircut — all configurable), four built-in SPEC-11 parameter sets
+  (interest-rate shock, market crash, sector rotation, liquidity
+  contraction) plus user-defined scenarios, and deterministic
+  `stress_test` producing per-position impacts, stressed
+  days-to-liquidate, the worst contributor and an explanation.
+- 7 scenario tests incl. exact shock math and determinism.
+
+## Sprint 14
 
 - Backtest Engine (ALG-013, SPEC-09, ADR-0015): deterministic historical
   simulator with the full SPEC-09 pipeline — point-in-time universe (no
@@ -180,6 +191,6 @@ Sprint 7 Market Regime Engine (RFC-0025) → Sprint 8 Risk Engine (RFC-0027)
 
 ## Recommended next sprint
 
-Sprint 15 — Scenario Simulator (ALG-015; SPEC-11 §Scenario Analysis):
-macro/sector/liquidity shocks and portfolio stress tests, then Sprint 16
-production hardening (observability, import-linter, runbooks).
+Sprint 16 — Production hardening: observability (structured logging with
+request/decision correlation), import-linter boundary contracts in CI,
+operational runbook (SPEC-07 §Backup), final status refresh.
