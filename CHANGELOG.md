@@ -5,6 +5,13 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Sprint 12 — Decision Kernel (2026-07-16)
+
+### Added
+- ALG-012 (SPEC-04, ADR-0013): 11-step kernel pipeline over injected engine
+  ports; Decision Object with all directive fields incl. compiler_version;
+  six-facet explanation; LLM-import-free (ADR-0003 verified by test).
+
 ## Sprint 11 — Decision Compiler (2026-07-16)
 
 ### Added

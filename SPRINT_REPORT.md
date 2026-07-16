@@ -1,8 +1,25 @@
-# SPRINT_REPORT — Sprint 11: Decision Compiler
+# SPRINT_REPORT — Sprint 12: Decision Kernel
 
 Date: 2026-07-16 · Commit: see `git log` (feat(probability)) · Previous: Phase 0 directive intake (`d9d63de`)
 
-## Completed work (Sprint 11)
+## Completed work (Sprint 12)
+
+- Decision Kernel (ALG-012, SPEC-04, ADR-0013): the full 11-step pipeline —
+  input/evidence validation (supporting + mandatory counter evidence,
+  invalidation conditions, risk-before-return), Bayesian probability and
+  confidence (RFC-0026), DSL rule adjustments applied on the posterior
+  (RFC-0020 order), expected utility (RFC-0026 EU + DSL UTILITY deltas),
+  ALG-007 position sizing for portfolio impact, six-facet explanation
+  (why / why not / assumptions / missing information / key risks /
+  alternative scenarios), and the complete Decision Object with
+  matched_rules, tags, risk_adjustment and compiler_version.
+- Extension seam per ADR-0013: probability and graph-execution engines are
+  constructor-injected behind kernel Protocols (RFC-0021 plugins will bind
+  here); kernel proven free of any LLM import path (ADR-0003 test).
+- 10 kernel tests: completeness, determinism, posterior+DSL interaction,
+  business-rule guards, zero-size fallback without return inputs.
+
+## Sprint 11
 
 - Decision Compiler back end (RFC-0020, ALG-011): immutable IR (rule id,
   version, priority, conditions, actions, tags, dependencies, source
@@ -133,14 +150,8 @@ Sprint 7 Market Regime Engine (RFC-0025) → Sprint 8 Risk Engine (RFC-0027)
    the RFC-0026 closed-form; a PyMC-backed calibration layer can replace
    `identity-v1` without contract changes.
 
-## Recommended next action
+## Recommended next sprint
 
-**Sprint 12 (Decision Kernel) is gated on a ruling.** SPEC-04 §Extension
-Points requires the kernel to support plugins for new asset classes,
-factor models, probability engines and optimization engines without core
-modification — that contract is RFC-0021 (Plugin SDK), which does not
-exist; RFC-0022 (Event Model) is also absent. Two options:
-(a) provide RFC-0021/0022, or (b) approve implementing the kernel pipeline
-now with hexagonal ports as the extension seam and plugin packaging
-deferred to RFC-0021. Everything else needed by the kernel is ready:
-probability, regime, risk, portfolio engines and the compiled DSL.
+Sprint 13 — Behavior Engine (SPEC-12, ALG-014): journaling service,
+confidence calibration, configurable bias detectors (ADR to document
+heuristics), behavioral KPIs.

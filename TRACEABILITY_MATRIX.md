@@ -28,6 +28,7 @@ No implementation may exist without a row here.
 | RFC-0023 §4–§8 | Feature Store | `feature_store.domain`, `feature_store.application`, `infrastructure.db.repositories.feature_registry` | `FeatureMetadata`, `Feature`, `FeatureStatus`, `FeatureRegistry`, `SqlFeatureRegistry`, `FeatureStoreUseCases` | `tests/unit/test_feature_store.py`, `test_data_platform.py::TestFeatureRegistry` |
 | SPEC-06 §Categories/Registration | Factor Library | `feature_store.domain.factor_catalogue` | `canonical_factors` (26 defs) | `test_feature_store.py::TestFactorCatalogue` |
 | RFC-0024 §4–§10 | Data Pipeline | `data_pipeline.domain`, `data_pipeline.application`, `infrastructure.db.repositories.dataset_catalog` | stages, `DatasetSchema`, `QualityReport`, `Lineage`, `DatasetVersion`, DP001–005 errors, `DataPipelineUseCases`, `SqlDatasetCatalog` | `tests/unit/test_data_pipeline.py`, `test_data_platform.py::TestDataPipelineEndToEnd` |
+| SPEC-04 + RFC-0020 §6 (ALG-012, ADR-0013) | Decision Kernel | `decision_kernel.application.kernel`, `decision_kernel.domain.decision_object` | `DecisionKernel`, `KernelInput`, `DecisionObject`, `KernelExplanation` | `tests/unit/test_decision_kernel.py` |
 | RFC-0020 (ALG-011) | Decision Compiler | `dsl.domain.{ir,graph,compiler,evaluator}` | `RuleIR`, `DecisionGraph`, `CompiledRuleset`, `compile_rules`, `evaluate` | `tests/unit/test_dsl_compiler.py` (golden regression) |
 | RFC-0017 v2 (ALG-010) | Decision DSL | `dsl.domain` | `tokenize`, `parse`, AST nodes, `SemanticAnalyzer`, `DEFAULT_SCHEMA`, DSL001–015 errors | `tests/unit/test_dsl_frontend.py` (golden + 46 more) |
 | RFC-0027 §5 + SPEC-10 (ALG-007/008) | Portfolio | `portfolio.domain.sizing`, `portfolio.domain.optimizer` | `kelly_fraction`, `position_size`, `Candidate`, `propose_portfolio`, `PortfolioProposal` | `tests/unit/test_portfolio_engine.py` |
@@ -49,7 +50,6 @@ No implementation may exist without a row here.
 | Document | Module | Package (planned) | Key classes (planned) | Tests (planned) | Sprint |
 |---|---|---|---|---|---|
 | SPEC-08 | API/Auth | `api`, `identity.application` | envelope, error mapper, JWT auth | endpoint integration tests | 3 |
-| SPEC-04 | Decision Kernel | `decision_kernel.application` | evaluation pipeline, explainability builder | kernel determinism tests | 9 |
 | SPEC-11 §Scenario Analysis | Risk Engine | `risk.application` | scenario runner (macro/sector/liquidity shocks) | scenario tests | 15 (Scenario Simulator) |
 | SPEC-10 §Rebalancing | Portfolio Engine | `portfolio.application` | rebalancer over proposals | rebalance reproducibility tests | 13+ |
 | SPEC-12 | Behavior Engine | `behavior.application` | journaling, bias detectors, calibration tracker | deterministic scoring tests | 12 |
