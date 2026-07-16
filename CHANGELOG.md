@@ -5,6 +5,23 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Phase 2 Module 3 — Production Data Pipeline (2026-07-16)
+
+### Added
+- `ProviderSyncService` (ADR-0017): full/incremental/replay provider
+  synchronization for prices, macro, fundamentals and FX through the
+  unchanged RFC-0024 pipeline (quality gates, lineage, quarantine).
+  Incremental watermarks recovered from the latest published dataset
+  version — rollback automatically rewinds the watermark; replays land
+  as `{end}#rN`, never overwriting history.
+- `PublishedPriceFacts`: decision-pipeline bridge exposing published
+  price/classification data as DSL fact mappings (Backtest
+  `FactProvider`-compatible); no provider type crosses into guarded
+  contexts.
+- `KnowledgeSyncService`: idempotent KG company/sector sync
+  materializing the RFC-0019 COMPANY→INDUSTRY→SECTOR chain.
+- ADR index refreshed (0013–0017 rows).
+
 ## Phase 2 Module 2 — Provider Connectors (2026-07-16)
 
 ### Added

@@ -14,6 +14,11 @@
 | [0009](0009-authentication-strategy.md) | Authentication Strategy (JWT + Argon2id) | SPEC-08, R3 |
 | [0010](0010-in-process-event-bus.md) | Interim In-Process Event Bus | RFC-0022 gap |
 | [0011](0011-ruff-format-as-black-gate.md) | `ruff format` Fulfills the Black Requirement | C8 |
+| [0013](0013-decision-kernel-design.md) | Decision Kernel Engine Ports (RFC-0021 seam) | SPEC-04, RFC-0021 gap |
+| [0014](0014-behavior-detector-heuristics.md) | Behavior Detector Heuristics and Thresholds | SPEC-12 |
+| [0015](0015-backtest-simulation-conventions.md) | Backtest Simulation Conventions | SPEC-09 |
+| [0016](0016-scenario-simulator-parameters.md) | Scenario Simulator Parameters | SPEC-11 |
+| [0017](0017-provider-sync-conventions.md) | Provider Synchronization Conventions | RFC-0024, Phase 2 M3 |
 
 ## Planned (triggering sprint in parentheses)
 

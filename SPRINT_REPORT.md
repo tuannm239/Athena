@@ -1,8 +1,49 @@
-# SPRINT_REPORT — Phase 2: Production Integration (Modules 1–2)
+# SPRINT_REPORT — Phase 2: Production Integration (Modules 1–3)
 
-Date: 2026-07-16 · Basis: 193 source files, 286 tests passed (2 Redis tests
+Date: 2026-07-16 · Basis: 197 source files, 301 tests passed (2 Redis tests
 skipped locally, run in CI), coverage 96% (gate ≥ 90%), ruff + ruff format +
 mypy --strict clean.
+
+## Phase 2 Module 3 — Production Data Pipeline
+
+**Implementation summary.** `ProviderSyncService`
+(`data_pipeline.application.sync`, ADR-0017): full, incremental and
+replay synchronization for prices, macro series, fundamentals and FX.
+Every sync run executes the unchanged RFC-0024 pipeline (ingest →
+validate → normalize → quality), so quality gates, lineage and
+quarantine apply to provider data with no special path. The incremental
+watermark is recovered from the latest *published* dataset version
+(versions encode the sync-window end date), so there is no separate
+sync-state store and rolling back a version automatically rewinds the
+watermark. Replays land as `{end}#rN` — history is never overwritten.
+`PublishedPriceFacts` (`data_pipeline.application.facts`) bridges
+published data into the decision pipeline as DSL fact mappings with the
+Backtest `FactProvider` signature. `KnowledgeSyncService`
+(`knowledge.application.sync`) idempotently materializes provider
+sector classifications as the RFC-0019 COMPANY→INDUSTRY→SECTOR chain.
+
+**Architecture notes.** All new code sits in application layers over
+existing ports; no RFC semantics changed, no Domain redesign. No
+provider type crosses into guarded contexts — the decision side sees
+only published datasets and fact mappings. Decimal fidelity: numeric
+provider values are stored as canonical strings in snapshots and
+re-hydrated with `Decimal(str(...))` (ADR-0017).
+
+**Performance impact.** Incremental sync fetches only days past the
+watermark; facts are loaded once per published version into an
+in-memory index (O(1) per (day, ticker) lookup). No hot-path changes.
+
+**Security impact.** None on auth surfaces. Provider data cannot bypass
+quality gates or quarantine; every published row carries lineage
+(source, ingestion time, pipeline version, transformation steps).
+
+**Test results & coverage.** `tests/unit/test_production_sync.py`
+(15 tests): full-sync publication with lineage, empty-window error,
+future-bar quarantine, watermark bootstrap/advance/no-op, rollback
+rewinding the watermark, replay versioning, macro/fundamental/FX sync,
+fact-mapping outputs (priced day, missing day, null volume), KG chain
+materialization and idempotency. Suite: 301 passed, 2 skipped;
+coverage 96%.
 
 ## Phase 2 Module 2 — Provider Connectors
 
