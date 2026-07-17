@@ -1,8 +1,30 @@
-# SPRINT_REPORT — Phase 2: Production Integration (Modules 1–7)
+# SPRINT_REPORT — Phase 2: Production Integration (Modules 1–8)
 
-Date: 2026-07-16 · Basis: 215 source files, 337 tests passed (2 Redis tests
+Date: 2026-07-16 · Basis: 217 source files, 338 tests passed (2 Redis tests
 skipped locally, run in CI), coverage 96% (gate ≥ 90%), ruff + ruff format +
 mypy --strict clean, migrations 0001–0008 apply end-to-end.
+
+## Phase 2 Module 8 — Performance Benchmarks
+
+**Implementation summary.** `scripts/benchmark.py` measures the four
+hot paths with deterministic synthetic workloads: DSL compilation
+(3-rule ruleset, full pipeline), decision-graph evaluation (the kernel
+hot path), the RFC-0026 probability pipeline over 30 evidence items,
+knowledge-graph impacts/traversal at 1 000 companies, and a one-year ×
+20-ticker weekly backtest — reporting P50/P95/P99 latency, throughput
+and peak memory (tracemalloc), plus cold `create_app` startup.
+Baseline committed as `docs/BENCHMARKS.md`; a smoke test keeps the
+suite runnable.
+
+**Results vs targets (all met).** Kernel graph evaluation 0.052 ms P95
+(~28k ops/s single-threaded); compile 2.1 ms P95; probability 1.2 ms
+P95; KG queries 0.13 ms P95; one-year backtest 64 ms; startup 46 ms.
+Peak memory under 250 KB per operation. Decimal-everywhere is
+affordable at current scale.
+
+**Watchpoints.** KG traversal at ≥100k nodes (move traversal SQL-side
+or cache adjacency per ADR-0007); vectorize backtest returns with
+Polars when intraday bars land.
 
 ## Phase 2 Module 7 — Security Hardening
 

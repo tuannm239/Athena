@@ -5,6 +5,19 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Phase 2 Module 8 — Performance Benchmarks (2026-07-16)
+
+### Added
+- `scripts/benchmark.py`: deterministic benchmark suite for the four
+  hot paths (DSL compile, decision-graph evaluation, probability
+  engine over 30 evidence, KG impacts/traversal at 1k nodes, one-year
+  weekly backtest) plus cold app startup — P50/P95/P99 latency,
+  throughput, peak memory (tracemalloc); optional `--json` output.
+- `docs/BENCHMARKS.md`: committed baseline with target assessment
+  (all targets met with ≥10× headroom; kernel hot path 0.052 ms P95,
+  startup 46 ms) and watchpoints (KG ≥100k nodes, intraday backtests).
+- Smoke test keeps the suite runnable in CI.
+
 ## Phase 2 Module 7 — Security Hardening (2026-07-16)
 
 ### Added
