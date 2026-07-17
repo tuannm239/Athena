@@ -55,6 +55,7 @@ No implementation may exist without a row here.
 | Phase 2 M6 — Observability (ADR-0018) | Infrastructure / API | `infrastructure.metrics`, `api.envelope`, `api.main` (`/metrics`, `/health/full`), `ops/` | `Metrics`, `RequestIdMiddleware` metrics recording, Prometheus/Grafana provisioning | `tests/integration/test_observability_api.py` |
 | Phase 2 M7 — Security (ADR-0019, SPEC-08) | Identity / API / Infrastructure | `identity.domain.user` (Role), `identity.application.{ports,use_cases}`, `api.{deps,ratelimit}`, `infrastructure.{config,security}`, `infrastructure.db.repositories.security_stores`, migration 0008 | `Role`, `require_roles`, `ApiKeyService`, `SqlApiKeyStore`, `SqlRefreshTokenStore`, `SqlSecurityAuditLog`, `RateLimiter`, `InsecureConfigurationError` | `tests/integration/test_security.py` (10 tests) |
 | Phase 2 M8 — Performance | Tooling | `scripts/benchmark.py`, `docs/BENCHMARKS.md` | `bench`, `BenchResult`, `run` | `tests/unit/test_benchmark_smoke.py` |
+| Phase 2 M9 — Production Readiness | Documentation | `PRODUCTION_READINESS_REPORT.md`, `docs/{DR_PLAN,DEPLOYMENT,PRODUCTION_CHECKLIST,RUNBOOK}.md` | Go/No-Go with evidence, DR/RPO/RTO, rollout + checklist | evidence cites the machine-enforced test suite |
 
 ## Planned
 

@@ -5,6 +5,22 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Phase 2 Module 9 — Production Readiness (2026-07-16)
+
+### Added
+- `PRODUCTION_READINESS_REPORT.md`: architecture/security/performance
+  compliance evidence, operational readiness, known risks, remaining
+  technical debt, deployment recommendation and the Go/No-Go decision
+  (**GO — conditional**: real market-data adapter, environment
+  checklist + restore drill, CVE scanning).
+- `docs/DR_PLAN.md` (RPO ≤ 1 h / RTO ≤ 4 h, four scenario procedures,
+  replay-based snapshot recovery), `docs/DEPLOYMENT.md` (topology,
+  config matrix, rollout, network policy, scheduled jobs, bootstrap),
+  `docs/PRODUCTION_CHECKLIST.md` (go-live gates).
+- RUNBOOK extended: metrics/health-dashboard operations, 429 triage,
+  security-audit triage, quarantine replay/rollback procedures.
+- PROJECT_STATUS refreshed (~95%; Phase 2 complete).
+
 ## Phase 2 Module 8 — Performance Benchmarks (2026-07-16)
 
 ### Added
