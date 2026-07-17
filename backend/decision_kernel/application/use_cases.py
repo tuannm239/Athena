@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from decimal import Decimal
+from typing import Mapping
 
 from decision_kernel.domain.decision import Decision, DecisionStatus, DecisionType
 from decision_kernel.domain.evidence import Evidence, EvidenceDirection
@@ -26,6 +27,7 @@ class EvidenceInput:
     explanation: str
     reliability: Decimal
     direction: EvidenceDirection
+    metadata: Mapping[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,6 +71,7 @@ def _to_evidence(item: EvidenceInput) -> Evidence:
         reliability=Reliability(item.reliability),
         direction=item.direction,
         explanation=item.explanation,
+        metadata=item.metadata,
     )
 
 

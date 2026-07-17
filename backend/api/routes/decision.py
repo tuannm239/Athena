@@ -44,6 +44,7 @@ def _evidence_inputs(items: list[EvidenceIn]) -> tuple[EvidenceInput, ...]:
             explanation=item.explanation,
             reliability=item.reliability,
             direction=item.direction,
+            metadata=item.metadata,
         )
         for item in items
     )

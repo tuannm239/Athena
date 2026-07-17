@@ -5,6 +5,22 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Phase 2 Module 5 — Research Copilot (2026-07-16)
+
+### Added
+- `ResearchCopilot` (`research.application.copilot`): the SPEC-01 flow
+  Document → Evidence Extraction → KG → Evidence Objects → Probability
+  Update → Decision Review. Ingest summarizes and extracts draft
+  evidence via the LLM Gateway, persists the research summary and
+  records EVENT→AFFECTS→COMPANY provenance in the knowledge graph.
+  Reviewed drafts (human-set reliability, ADR-0003) become Evidence
+  with LLM lineage metadata and land in the KG as EVIDENCE nodes with
+  SUPPORTED_BY/CONTRADICTED_BY edges. Probability review reports
+  without mutating the aggregate; decision review narrates structured
+  facts. No method creates or transitions a decision (tested).
+- `EvidenceInput.metadata` wired end-to-end (API `EvidenceIn.metadata`
+  previously dropped on the inbound path).
+
 ## Phase 2 Module 4 — LLM Gateway (2026-07-16)
 
 ### Added

@@ -1,8 +1,49 @@
-# SPRINT_REPORT — Phase 2: Production Integration (Modules 1–4)
+# SPRINT_REPORT — Phase 2: Production Integration (Modules 1–5)
 
-Date: 2026-07-16 · Basis: 206 source files, 316 tests passed (2 Redis tests
+Date: 2026-07-16 · Basis: 209 source files, 323 tests passed (2 Redis tests
 skipped locally, run in CI), coverage 96% (gate ≥ 90%), ruff + ruff format +
 mypy --strict clean.
+
+## Phase 2 Module 5 — Research Copilot
+
+**Implementation summary.** `ResearchCopilot`
+(`research.application.copilot`) implements Document → Evidence
+Extraction → KG → Evidence Objects → Probability Update → Decision
+Review. `ingest_document` summarizes and extracts draft evidence
+through the LLM Gateway, persists a `ResearchSummary` whose sources
+name both the document and the LLM (model @ prompt version), and
+records EVENT —AFFECTS→ COMPANY provenance in the knowledge graph.
+`attach_reviewed_evidence` converts *accepted* drafts into Evidence on
+an existing decision — the reviewer sets reliability (the LLM never
+rates itself), LLM lineage lands in evidence metadata, and the KG gains
+EVIDENCE nodes with SUPPORTED_BY/CONTRADICTED_BY edges (NEUTRAL gets a
+node, no edge — RFC-0019 §4 has no neutral relation).
+`probability_review` returns the RFC-0026 report without mutating the
+aggregate; `decision_review` narrates structured decision facts via the
+gateway's explain (facts in, prose out).
+
+**Architecture notes.** The copilot has no method that creates,
+approves, rejects, sizes or archives a decision, and a dedicated test
+proves every flow leaves the decision DRAFT with no new decisions.
+`EvidenceInput` gained a `metadata` field, wired through
+`_to_evidence` and the API inbound mapper (which previously dropped
+`EvidenceIn.metadata`).
+
+**Performance impact.** Research-side only; KG idempotency checks read
+one snapshot per mutation call. No decision-path changes.
+
+**Security impact.** LLM output enters the platform only as drafts;
+nothing becomes Evidence without an explicit human review carrying a
+human-set reliability. All LLM-derived evidence is identifiable via
+metadata (`source_type=llm`, model, prompt version, task).
+
+**Test results & coverage.** `tests/unit/test_research_copilot.py`
+(7 tests): ingest produces summary/drafts/graph provenance, re-ingest
+adds no duplicate edges, reviewed drafts become lineage-tagged evidence
+with correct KG relations, rejected-only reviews error, probability
+review reports without mutation, decision review narrates facts, and
+the copilot never changes decision state. Suite: 323 passed, 2 skipped;
+coverage 96%.
 
 ## Phase 2 Module 4 — LLM Gateway
 
