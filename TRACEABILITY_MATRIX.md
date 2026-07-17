@@ -53,6 +53,7 @@ No implementation may exist without a row here.
 | Phase 2 M4 — LLM Gateway (ADR-0003, SPEC-00 LLM Policy) | LLM Gateway | `llm_gateway.domain`, `llm_gateway.application.gateway`, `llm_gateway.adapters`, `llm_gateway.testing` | `LlmClient`, `LlmGateway`, `LlmLineage`, `EvidenceDraft`, vendor adapters, `create_client`, `FakeLlmClient` | `tests/unit/test_llm_gateway.py`, `test_architecture.py` (isolation both directions) |
 | Phase 2 M5 — Research Copilot (SPEC-01 Research, ADR-0003) | Research | `research.application.copilot` | `ResearchCopilot`, `ReviewedDraft`, `ResearchPacket`, `ResearchError` | `tests/unit/test_research_copilot.py` |
 | Phase 2 M6 — Observability (ADR-0018) | Infrastructure / API | `infrastructure.metrics`, `api.envelope`, `api.main` (`/metrics`, `/health/full`), `ops/` | `Metrics`, `RequestIdMiddleware` metrics recording, Prometheus/Grafana provisioning | `tests/integration/test_observability_api.py` |
+| Phase 2 M7 — Security (ADR-0019, SPEC-08) | Identity / API / Infrastructure | `identity.domain.user` (Role), `identity.application.{ports,use_cases}`, `api.{deps,ratelimit}`, `infrastructure.{config,security}`, `infrastructure.db.repositories.security_stores`, migration 0008 | `Role`, `require_roles`, `ApiKeyService`, `SqlApiKeyStore`, `SqlRefreshTokenStore`, `SqlSecurityAuditLog`, `RateLimiter`, `InsecureConfigurationError` | `tests/integration/test_security.py` (10 tests) |
 
 ## Planned
 

@@ -32,6 +32,9 @@ class UserRow(Base):
     id: Mapped[uuid.UUID] = mapped_column(_UUID, primary_key=True)
     email: Mapped[str] = mapped_column(String(320), unique=True)
     status: Mapped[str] = mapped_column(String(32))
+    role: Mapped[str] = mapped_column(
+        String(16), default="ANALYST", server_default="ANALYST"
+    )  # ADR-0019
     password_hash: Mapped[str | None] = mapped_column(String(256))  # ADR-0009
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
@@ -211,6 +214,31 @@ class AuditRow(Base):
     id: Mapped[uuid.UUID] = mapped_column(_UUID, primary_key=True, default=uuid.uuid4)
     entity_type: Mapped[str] = mapped_column(String(64), index=True)
     entity_id: Mapped[uuid.UUID] = mapped_column(_UUID, index=True)
-    action: Mapped[str] = mapped_column(String(16))  # CREATE | UPDATE
+    action: Mapped[str] = mapped_column(String(64))  # CREATE | UPDATE | security events
     snapshot: Mapped[dict[str, Any]] = mapped_column(PortableJSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class ApiKeyRow(Base):
+    """API keys (ADR-0019): only the sha256 of the raw key is stored."""
+
+    __tablename__ = "api_keys"
+
+    id: Mapped[uuid.UUID] = mapped_column(_UUID, primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(_UUID, ForeignKey("users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    prefix: Mapped[str] = mapped_column(String(16))
+    key_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+
+
+class RefreshTokenRow(Base):
+    """Single-use refresh tokens (ADR-0019 rotation / reuse detection)."""
+
+    __tablename__ = "refresh_tokens"
+
+    jti: Mapped[str] = mapped_column(String(32), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(_UUID, ForeignKey("users.id"), index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)

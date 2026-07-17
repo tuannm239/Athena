@@ -5,6 +5,29 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Phase 2 Module 7 — Security Hardening (2026-07-16)
+
+### Added
+- RBAC (ADR-0019): `Role` on the user (VIEWER/ANALYST/ADMIN),
+  per-request role checks via `require_roles`, write endpoints guarded
+  (VIEWER is read-only, 403 Forbidden mapped); role persisted
+  (migration 0008) and exposed in the user response.
+- API keys: `athena_…` keys with sha256-only storage, shown once at
+  creation; X-API-Key authentication; list/revoke endpoints; revocation
+  is a timestamp.
+- Refresh-token rotation: single-use jti registry (`refresh_tokens`),
+  reuse of a consumed token rejected and audited.
+- Secret management: `ATHENA_ENV=production` refuses dev/short JWT
+  secrets at startup (`InsecureConfigurationError`).
+- Rate limiting: per-host token buckets, strict bucket for auth
+  endpoints, 429 + Retry-After; `/health` and `/metrics` exempt
+  (per-process interim — ADR-0019).
+- Security audit trail: registrations, login success/failure, refresh
+  rotation/rejection, API-key lifecycle → SPEC-07 audit log
+  (`entity_type=security`); audit action column widened to 64.
+- `docs/SECURITY_REVIEW.md`: OWASP Top 10 (2021) assessment with
+  prioritized follow-ups.
+
 ## Phase 2 Module 6 — Observability (2026-07-16)
 
 ### Added

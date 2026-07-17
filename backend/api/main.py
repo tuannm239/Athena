@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from api.deps import build_container, container
 from api.envelope import RequestIdMiddleware
 from api.errors import register_error_handlers
+from api.ratelimit import RateLimiter, RateLimitMiddleware
 from api.routes import auth, backtests, companies, decision, market, portfolio
 from infrastructure.config import Settings
 from infrastructure.metrics import Metrics
@@ -72,7 +73,18 @@ def create_app(
     )
     metrics = Metrics(version=APP_VERSION)
     app.state.container = build_container(settings=settings, session_factory=session_factory)
+    cfg = app.state.container.settings
+    cfg.ensure_safe_for_environment()  # fail fast on dev secrets in production
     app.state.metrics = metrics
+    # Middleware order (outermost last-added): request-id wraps rate limiting
+    # so even 429 responses carry an id and land in the access log/metrics.
+    app.add_middleware(
+        RateLimitMiddleware,
+        limiter=RateLimiter(
+            per_minute=cfg.rate_limit_per_minute,
+            auth_per_minute=cfg.auth_rate_limit_per_minute,
+        ),
+    )
     app.add_middleware(RequestIdMiddleware, metrics=metrics)
     register_error_handlers(app)
 

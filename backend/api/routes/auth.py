@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, Depends, Request
 
-from api.deps import Container, container
+from api.deps import Container, container, current_user
 from api.envelope import ok
 from api.schemas import (
+    ApiKeyCreatedResponse,
+    ApiKeyCreateRequest,
+    ApiKeyResponse,
     Envelope,
     LoginRequest,
     RefreshRequest,
@@ -14,6 +19,7 @@ from api.schemas import (
     TokenResponse,
     UserResponse,
 )
+from identity.domain.user import User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -26,7 +32,11 @@ async def register(
     return ok(
         request,
         UserResponse(
-            id=user.id.value, email=user.email, status=user.status, created_at=user.created_at
+            id=user.id.value,
+            email=user.email,
+            status=user.status,
+            role=user.role.value,
+            created_at=user.created_at,
         ),
     )
 
@@ -59,3 +69,56 @@ async def refresh(
             token_type=pair.token_type,
         ),
     )
+
+
+@router.post("/api-keys", status_code=201, summary="Create an API key (raw key shown once)")
+async def create_api_key(
+    request: Request,
+    body: ApiKeyCreateRequest,
+    services: Container = Depends(container),
+    user: User = Depends(current_user),
+) -> Envelope[ApiKeyCreatedResponse]:
+    record, raw = services.api_keys.create(user, body.name)
+    return ok(
+        request,
+        ApiKeyCreatedResponse(
+            id=record.id,
+            name=record.name,
+            prefix=record.prefix,
+            created_at=record.created_at,
+            api_key=raw,
+        ),
+    )
+
+
+@router.get("/api-keys", summary="List the caller's API keys")
+async def list_api_keys(
+    request: Request,
+    services: Container = Depends(container),
+    user: User = Depends(current_user),
+) -> Envelope[list[ApiKeyResponse]]:
+    records = services.api_keys.list_for(user)
+    return ok(
+        request,
+        [
+            ApiKeyResponse(
+                id=r.id,
+                name=r.name,
+                prefix=r.prefix,
+                created_at=r.created_at,
+                revoked_at=r.revoked_at,
+            )
+            for r in records
+        ],
+    )
+
+
+@router.delete("/api-keys/{key_id}", status_code=200, summary="Revoke an API key")
+async def revoke_api_key(
+    request: Request,
+    key_id: uuid.UUID,
+    services: Container = Depends(container),
+    user: User = Depends(current_user),
+) -> Envelope[dict[str, str]]:
+    services.api_keys.revoke(user, key_id)
+    return ok(request, {"status": "revoked"})

@@ -11,7 +11,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, Query, Request
 
-from api.deps import Container, container, current_user
+from api.deps import Container, container, current_user, writer
 from api.envelope import ok
 from api.mappers import decision_out
 from api.schemas import (
@@ -87,7 +87,7 @@ async def create_decision(
     request: Request,
     body: DecisionCreateRequest,
     services: Container = Depends(container),
-    _user: User = Depends(current_user),
+    _user: User = Depends(writer),
 ) -> Envelope[DecisionResponse]:
     decision = services.decisions.create(
         CreateDecisionInput(
@@ -111,7 +111,7 @@ async def update_decision(
     decision_id: uuid.UUID,
     body: DecisionUpdateRequest,
     services: Container = Depends(container),
-    _user: User = Depends(current_user),
+    _user: User = Depends(writer),
 ) -> Envelope[DecisionResponse]:
     risk = None
     if body.risk_assessment is not None:

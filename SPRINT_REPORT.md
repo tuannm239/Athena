@@ -1,8 +1,49 @@
-# SPRINT_REPORT — Phase 2: Production Integration (Modules 1–6)
+# SPRINT_REPORT — Phase 2: Production Integration (Modules 1–7)
 
-Date: 2026-07-16 · Basis: 211 source files, 327 tests passed (2 Redis tests
+Date: 2026-07-16 · Basis: 215 source files, 337 tests passed (2 Redis tests
 skipped locally, run in CI), coverage 96% (gate ≥ 90%), ruff + ruff format +
-mypy --strict clean.
+mypy --strict clean, migrations 0001–0008 apply end-to-end.
+
+## Phase 2 Module 7 — Security Hardening
+
+**Implementation summary.** ADR-0019 lands the full auth hardening set:
+RBAC roles on the user (VIEWER read-only, ANALYST writes, ADMIN
+reserved) enforced per-request via the `require_roles` dependency on
+write endpoints; API keys (`athena_` + 256-bit random, sha256-only
+storage, raw shown once, X-API-Key authentication, list/revoke);
+single-use refresh tokens (jti registry consumed atomically — reuse of
+a stolen or already-used token is rejected and audited); production
+secret policy (`ATHENA_ENV=production` refuses the dev default or any
+JWT secret under 32 chars at startup); per-host token-bucket rate
+limiting with a strict bucket for `/api/v1/auth/*` and 429+Retry-After;
+and a security audit trail (registrations, login success/failure,
+refresh rotation/rejection, key lifecycle) in the SPEC-07 insert-only
+audit log. Migration 0008 adds `users.role`, `api_keys`,
+`refresh_tokens` and widens the audit action column.
+
+**Architecture notes.** All policies live behind identity ports
+(`ApiKeyStore`, `RefreshTokenStore`, `SecurityAuditLog`) with SQL
+adapters in infrastructure; roles are read from the user record on
+each request (immediately revocable) rather than baked into JWT
+claims. `AuthorizationError` maps to 403. Rate limiting is in-process
+(documented interim until horizontal scaling).
+
+**Performance impact.** One dictionary lookup + bucket update per
+request for rate limiting; API-key auth is a single indexed sha256
+lookup; refresh rotation adds one row write per refresh.
+
+**Security impact.** This module. OWASP Top 10 assessment in
+`docs/SECURITY_REVIEW.md`: A01–A04, A07–A09 mitigated; A05/A06/A10
+partial with prioritized follow-ups (CVE scanning in CI, network
+policy for ops endpoints, shared rate limiter, password reset when a
+notification channel exists).
+
+**Test results & coverage.** `tests/integration/test_security.py`
+(10 tests): viewer 403 / analyst 201, API-key lifecycle incl. raw-key
+shown-once and revocation, single-use refresh rotation with reuse
+rejection, auth-bucket 429 with exempt ops endpoints, production
+secret refusal/acceptance, audit-trail contents. Suite: 337 passed,
+2 skipped; coverage 96%; migrations 0001–0008 verified end-to-end.
 
 ## Phase 2 Module 6 — Observability
 

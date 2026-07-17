@@ -6,7 +6,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, Query, Request
 
-from api.deps import Container, container, current_user
+from api.deps import Container, container, current_user, writer
 from api.envelope import ok
 from api.mappers import portfolio_out
 from api.schemas import Envelope, Page, PortfolioCreateRequest, PortfolioResponse, PositionOut
@@ -41,7 +41,7 @@ async def create_portfolio(
     request: Request,
     body: PortfolioCreateRequest,
     services: Container = Depends(container),
-    user: User = Depends(current_user),
+    user: User = Depends(writer),
 ) -> Envelope[PortfolioResponse]:
     portfolio = services.portfolios.create(user.id, body.base_currency, body.cash)
     return ok(request, portfolio_out(portfolio))

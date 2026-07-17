@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Callable
 
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -10,15 +11,20 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from company.domain.repository import CompanyRepository
 from decision_kernel.application.use_cases import DecisionUseCases
-from identity.application.ports import AuthenticationError
-from identity.application.use_cases import AuthenticateUser, RegisterUser
-from identity.domain.user import User
+from identity.application.ports import AuthenticationError, AuthorizationError
+from identity.application.use_cases import ApiKeyService, AuthenticateUser, RegisterUser
+from identity.domain.user import Role, User
 from infrastructure.config import Settings
 from infrastructure.db.engine import build_engine, build_session_factory
 from infrastructure.db.repositories.company import SqlCompanyRepository
 from infrastructure.db.repositories.credentials import SqlCredentialStore
 from infrastructure.db.repositories.decision import SqlDecisionRepository
 from infrastructure.db.repositories.portfolio import SqlPortfolioRepository
+from infrastructure.db.repositories.security_stores import (
+    SqlApiKeyStore,
+    SqlRefreshTokenStore,
+    SqlSecurityAuditLog,
+)
 from infrastructure.db.repositories.user import SqlUserRepository
 from infrastructure.events import InProcessEventBus
 from infrastructure.security import Argon2PasswordHasher, JwtTokenService
@@ -36,6 +42,7 @@ class Container:
     companies: CompanyRepository
     register_user: RegisterUser
     authenticate: AuthenticateUser
+    api_keys: ApiKeyService
     event_bus: InProcessEventBus
 
 
@@ -49,15 +56,20 @@ def build_container(
     users = SqlUserRepository(sessions)
     credentials = SqlCredentialStore(sessions)
     hasher = Argon2PasswordHasher()
-    tokens = JwtTokenService(cfg)
+    audit = SqlSecurityAuditLog(sessions)
+    api_key_store = SqlApiKeyStore(sessions)
+    tokens = JwtTokenService(cfg, refresh_store=SqlRefreshTokenStore(sessions))
     return Container(
         settings=cfg,
         sessions=sessions,
         decisions=DecisionUseCases(repository=SqlDecisionRepository(sessions), events=bus),
         portfolios=PortfolioUseCases(repository=SqlPortfolioRepository(sessions), events=bus),
         companies=SqlCompanyRepository(sessions),
-        register_user=RegisterUser(users, credentials, hasher),
-        authenticate=AuthenticateUser(users, credentials, hasher, tokens),
+        register_user=RegisterUser(users, credentials, hasher, audit=audit),
+        authenticate=AuthenticateUser(
+            users, credentials, hasher, tokens, audit=audit, api_keys=api_key_store
+        ),
+        api_keys=ApiKeyService(users, api_key_store, audit=audit),
         event_bus=bus,
     )
 
@@ -75,7 +87,25 @@ def current_user(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
 ) -> User:
-    """JWT bearer guard (ADR-0009): requires a valid access token."""
+    """Auth guard (ADR-0009/0019): JWT bearer token or X-API-Key."""
+    api_key = request.headers.get("X-API-Key")
+    if api_key is not None:
+        return container(request).authenticate.resolve_api_key(api_key)
     if credentials is None:
-        raise AuthenticationError("missing bearer token")
+        raise AuthenticationError("missing bearer token or API key")
     return container(request).authenticate.resolve_access_token(credentials.credentials)
+
+
+def require_roles(*roles: Role) -> Callable[..., User]:
+    """RBAC guard (ADR-0019): authenticated user must hold one of the roles."""
+
+    def guard(user: User = Depends(current_user)) -> User:
+        if user.role not in roles:
+            raise AuthorizationError(f"requires one of roles: {', '.join(roles)}")
+        return user
+
+    return guard
+
+
+writer = require_roles(Role.ANALYST, Role.ADMIN)
+"""Write access to decisions and portfolios (VIEWER is read-only)."""

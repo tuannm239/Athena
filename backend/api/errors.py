@@ -13,7 +13,7 @@ from starlette.responses import JSONResponse
 
 from api.envelope import error_body
 from decision_kernel.domain.decision import InvalidDecisionTransition
-from identity.application.ports import AuthenticationError
+from identity.application.ports import AuthenticationError, AuthorizationError
 from shared_kernel.exceptions import ConflictError, DomainError, NotFoundError
 
 _HTTP_CODE_NAMES = {
@@ -39,6 +39,12 @@ def register_error_handlers(app: FastAPI) -> None:
     async def _auth(request: Request, exc: AuthenticationError) -> JSONResponse:
         return JSONResponse(
             status_code=401, content=error_body(request, "Unauthorized", str(exc) or "unauthorized")
+        )
+
+    @app.exception_handler(AuthorizationError)
+    async def _forbidden(request: Request, exc: AuthorizationError) -> JSONResponse:
+        return JSONResponse(
+            status_code=403, content=error_body(request, "Forbidden", str(exc) or "forbidden")
         )
 
     @app.exception_handler(NotFoundError)

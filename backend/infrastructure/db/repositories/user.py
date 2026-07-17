@@ -6,14 +6,20 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from identity.domain.repository import UserRepository
-from identity.domain.user import User
+from identity.domain.user import Role, User
 from infrastructure.db.engine import session_scope
 from infrastructure.db.models import UserRow
 from shared_kernel.identifiers import UserId
 
 
 def _from_row(row: UserRow) -> User:
-    return User(email=row.email, status=row.status, created_at=row.created_at, id=UserId(row.id))
+    return User(
+        email=row.email,
+        status=row.status,
+        role=Role(row.role),
+        created_at=row.created_at,
+        id=UserId(row.id),
+    )
 
 
 class SqlUserRepository(UserRepository):
@@ -29,12 +35,14 @@ class SqlUserRepository(UserRepository):
                         id=user.id.value,
                         email=user.email,
                         status=user.status,
+                        role=user.role.value,
                         created_at=user.created_at,
                     )
                 )
             else:
                 existing.email = user.email
                 existing.status = user.status
+                existing.role = user.role.value
 
     def get(self, user_id: UserId) -> User | None:
         with session_scope(self._sessions) as session:

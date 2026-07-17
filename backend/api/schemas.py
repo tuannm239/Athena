@@ -72,7 +72,28 @@ class UserResponse(BaseModel):
     id: uuid.UUID
     email: str
     status: str
+    role: str
     created_at: datetime
+
+
+class ApiKeyCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+
+
+class ApiKeyResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    prefix: str
+    created_at: datetime
+    revoked_at: datetime | None = None
+
+
+class ApiKeyCreatedResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    prefix: str
+    created_at: datetime
+    api_key: str  # shown exactly once; only its hash is stored (ADR-0019)
 
 
 # -- decisions ----------------------------------------------------------------
