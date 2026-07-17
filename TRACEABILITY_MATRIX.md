@@ -52,6 +52,7 @@ No implementation may exist without a row here.
 | Phase 2 M3 — Production Data Pipeline (RFC-0024 §9, ADR-0017) | Data Pipeline / Knowledge | `data_pipeline.application.{sync,facts}`, `knowledge.application.sync` | `ProviderSyncService`, `SyncError`, dataset schemas, `PublishedPriceFacts`, `KnowledgeSyncService` | `tests/unit/test_production_sync.py` |
 | Phase 2 M4 — LLM Gateway (ADR-0003, SPEC-00 LLM Policy) | LLM Gateway | `llm_gateway.domain`, `llm_gateway.application.gateway`, `llm_gateway.adapters`, `llm_gateway.testing` | `LlmClient`, `LlmGateway`, `LlmLineage`, `EvidenceDraft`, vendor adapters, `create_client`, `FakeLlmClient` | `tests/unit/test_llm_gateway.py`, `test_architecture.py` (isolation both directions) |
 | Phase 2 M5 — Research Copilot (SPEC-01 Research, ADR-0003) | Research | `research.application.copilot` | `ResearchCopilot`, `ReviewedDraft`, `ResearchPacket`, `ResearchError` | `tests/unit/test_research_copilot.py` |
+| Phase 2 M6 — Observability (ADR-0018) | Infrastructure / API | `infrastructure.metrics`, `api.envelope`, `api.main` (`/metrics`, `/health/full`), `ops/` | `Metrics`, `RequestIdMiddleware` metrics recording, Prometheus/Grafana provisioning | `tests/integration/test_observability_api.py` |
 
 ## Planned
 

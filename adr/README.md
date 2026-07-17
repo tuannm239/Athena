@@ -19,6 +19,7 @@
 | [0015](0015-backtest-simulation-conventions.md) | Backtest Simulation Conventions | SPEC-09 |
 | [0016](0016-scenario-simulator-parameters.md) | Scenario Simulator Parameters | SPEC-11 |
 | [0017](0017-provider-sync-conventions.md) | Provider Synchronization Conventions | RFC-0024, Phase 2 M3 |
+| [0018](0018-observability-stack.md) | Observability Stack (Metrics Pull, OTel Deferred) | Phase 2 M6 |
 
 ## Planned (triggering sprint in parentheses)
 

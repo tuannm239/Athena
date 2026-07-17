@@ -1,8 +1,44 @@
-# SPRINT_REPORT — Phase 2: Production Integration (Modules 1–5)
+# SPRINT_REPORT — Phase 2: Production Integration (Modules 1–6)
 
-Date: 2026-07-16 · Basis: 209 source files, 323 tests passed (2 Redis tests
+Date: 2026-07-16 · Basis: 211 source files, 327 tests passed (2 Redis tests
 skipped locally, run in CI), coverage 96% (gate ≥ 90%), ruff + ruff format +
 mypy --strict clean.
+
+## Phase 2 Module 6 — Observability
+
+**Implementation summary.** Prometheus metrics behind a per-application
+`Metrics` registry (`infrastructure.metrics`): request counter and
+latency histogram labeled by *route template* (unmatched requests share
+one `unmatched` label — cardinality stays bounded) plus an
+`athena_app_info` version gauge, recorded inside the existing
+`RequestIdMiddleware` and exposed at `/metrics` in the exposition
+format. `/health/full` reports per-component status (database SELECT 1,
+Redis ping with 1 s timeouts, snapshot-directory write probe) with an
+aggregate ok/degraded verdict and always returns 200 — it reports,
+Kubernetes-style gating stays on `/health`. Prometheus + Grafana ship
+in docker-compose with file-provisioned datasource and an ATHENA API
+dashboard (request rate, P95 latency, error share) under `ops/`.
+
+**Architecture notes.** ADR-0018: metrics use the pull model via
+`prometheus-client`; the full OpenTelemetry SDK (traces + collector) is
+deferred until the event bus goes out-of-process (RFC-0022) or a second
+service appears — structured logs with request-id/decision-id
+correlation (Sprint 16) answer today's single-process questions. One
+registry per app instance keeps test apps hermetic.
+
+**Performance impact.** Metric recording is two label lookups and one
+histogram observation per request (sub-microsecond scale); /metrics
+rendering is on-demand. No decision-path changes.
+
+**Security impact.** `/metrics` and `/health/full` expose no secrets
+(component status strings carry exception *types* only). In production
+these endpoints should sit behind network policy; noted for Module 7/9.
+
+**Test results & coverage.**
+`tests/integration/test_observability_api.py` (4 tests): exposition
+format with template labels and bounded unmatched label, per-app
+registry isolation, degraded dashboard without failure, bare liveness.
+Suite: 327 passed, 2 skipped; coverage 96%.
 
 ## Phase 2 Module 5 — Research Copilot
 

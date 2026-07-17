@@ -11,6 +11,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import Response
 
 from api.schemas import ApiError, Envelope
+from infrastructure.metrics import Metrics
 from infrastructure.observability import RequestTimer, get_logger
 
 _access_log = get_logger("api.access")
@@ -42,7 +43,12 @@ def error_body(request: Request, code: str, detail: str) -> dict[str, Any]:
 
 
 class RequestIdMiddleware(BaseHTTPMiddleware):
-    """Assigns a request id (honoring X-Request-ID) and echoes it back."""
+    """Assigns a request id (honoring X-Request-ID), echoes it back,
+    writes the access log and records HTTP metrics (Module 6)."""
+
+    def __init__(self, app: Any, metrics: Metrics | None = None) -> None:
+        super().__init__(app)
+        self._metrics = metrics
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         request.state.request_id = request.headers.get("X-Request-ID", uuid.uuid4().hex)
@@ -59,4 +65,15 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
                 "duration_ms": timer.duration_ms,
             },
         )
+        if self._metrics is not None:
+            # Route template keeps label cardinality bounded; requests
+            # that matched no route share one "unmatched" label.
+            route = request.scope.get("route")
+            template = getattr(route, "path", "unmatched")
+            self._metrics.observe_request(
+                method=request.method,
+                path=str(template),
+                status=response.status_code,
+                seconds=timer.duration_ms / 1000,
+            )
         return response

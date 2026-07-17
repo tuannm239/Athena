@@ -5,6 +5,26 @@ pre-release sprints until Sprint 15 (production readiness).
 
 ## [Unreleased]
 
+## Phase 2 Module 6 — Observability (2026-07-16)
+
+### Added
+- Prometheus metrics (ADR-0018): per-app `Metrics` registry
+  (`infrastructure.metrics`), `/metrics` exposition endpoint,
+  HTTP request counter + latency histogram labeled by *route template*
+  (bounded cardinality; unmatched requests share one label),
+  `athena_app_info` version gauge; recorded in `RequestIdMiddleware`.
+- `/health/full` component dashboard: database / Redis / snapshot-store
+  status with aggregate ok/degraded (always 200 — reporting, not
+  gating); `/health` stays a bare liveness probe.
+- docker-compose Prometheus + Grafana with file-provisioned datasource
+  and an ATHENA API dashboard (request rate, P95 latency, error share)
+  under `ops/`.
+- ADR-0018: metrics pull model; full OpenTelemetry SDK deferred until
+  RFC-0022 / a second service (request-id correlation covers today's
+  single-process path).
+- `Container.sessions` exposed for health checks;
+  `prometheus-client` runtime dependency.
+
 ## Phase 2 Module 5 — Research Copilot (2026-07-16)
 
 ### Added

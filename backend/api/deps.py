@@ -30,6 +30,7 @@ class Container:
     """Wired application services; one per app instance."""
 
     settings: Settings
+    sessions: sessionmaker[Session]
     decisions: DecisionUseCases
     portfolios: PortfolioUseCases
     companies: CompanyRepository
@@ -51,6 +52,7 @@ def build_container(
     tokens = JwtTokenService(cfg)
     return Container(
         settings=cfg,
+        sessions=sessions,
         decisions=DecisionUseCases(repository=SqlDecisionRepository(sessions), events=bus),
         portfolios=PortfolioUseCases(repository=SqlPortfolioRepository(sessions), events=bus),
         companies=SqlCompanyRepository(sessions),
