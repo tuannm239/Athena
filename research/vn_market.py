@@ -272,5 +272,7 @@ def calmar(series: list[float]) -> float:
 if __name__ == "__main__":
     p = generate_market()
     print(f"seed={p.seed} years={p.years} days={p.n_days} companies={len(p.companies)}")
-    print(f"VNINDEX ann.return={annualised_return(p.market):.4f} "
-          f"vol={annualised_vol(p.market_ret):.4f} mdd={max_drawdown(p.market):.4f}")
+    print(
+        f"VNINDEX ann.return={annualised_return(p.market):.4f} "
+        f"vol={annualised_vol(p.market_ret):.4f} mdd={max_drawdown(p.market):.4f}"
+    )

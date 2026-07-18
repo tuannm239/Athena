@@ -100,10 +100,19 @@ def replay(panel: vm.MarketPanel) -> list[DecisionRecord]:
             fwd = panel.prices[c.ticker][day + HORIZON] / panel.prices[c.ticker][day] - 1
             records.append(
                 DecisionRecord(
-                    month=month, day=day, ticker=c.ticker, sector=c.sector,
-                    regime=panel.regimes[day], quality=q, value=v, momentum=mo,
-                    posterior=p, confidence=conf, fwd_return=fwd,
-                    mkt_fwd_return=mkt_fwd, outperformed=1 if fwd > mkt_fwd else 0,
+                    month=month,
+                    day=day,
+                    ticker=c.ticker,
+                    sector=c.sector,
+                    regime=panel.regimes[day],
+                    quality=q,
+                    value=v,
+                    momentum=mo,
+                    posterior=p,
+                    confidence=conf,
+                    fwd_return=fwd,
+                    mkt_fwd_return=mkt_fwd,
+                    outperformed=1 if fwd > mkt_fwd else 0,
                 )
             )
         month += 1
@@ -112,15 +121,23 @@ def replay(panel: vm.MarketPanel) -> list[DecisionRecord]:
 
 def main() -> None:
     import time
+
     seed = int(sys.argv[1]) if len(sys.argv) > 1 else 20260718
     t0 = time.perf_counter()
     panel = vm.generate_market(seed=seed)
     records = replay(panel)
     elapsed = time.perf_counter() - t0
-    out = Path(__file__).resolve().parents[1] / "research" / "experiments" / f"decisions_seed{seed}.json"
+    out = (
+        Path(__file__).resolve().parents[1]
+        / "research"
+        / "experiments"
+        / f"decisions_seed{seed}.json"
+    )
     out.write_text(json.dumps([asdict(r) for r in records]))
-    print(f"seed={seed} decisions={len(records)} months={records[-1].month + 1} "
-          f"elapsed={elapsed:.1f}s -> {out.name}")
+    print(
+        f"seed={seed} decisions={len(records)} months={records[-1].month + 1} "
+        f"elapsed={elapsed:.1f}s -> {out.name}"
+    )
 
 
 if __name__ == "__main__":

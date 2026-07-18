@@ -150,7 +150,10 @@ class TestPipelineIntegration:
     """The adapter feeds the RFC-0024 pipeline unchanged (ADR-0017)."""
 
     def test_provider_sync_publishes_alphavantage_prices(self) -> None:
-        from test_production_sync import MemoryCatalog, MemorySnapshots  # reuse fakes
+        from test_production_sync import (  # type: ignore[import-not-found]
+            MemoryCatalog,
+            MemorySnapshots,
+        )
 
         rp = create_alphavantage_price_provider(
             api_key="k", transport=FakeTransport({"TIME_SERIES_DAILY": PRICE_PAYLOAD})

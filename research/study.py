@@ -63,6 +63,7 @@ def mutual_information(feature: list[float], label: list[int], bins: int = 5) ->
 
 def population_stability_index(a: list[float], b: list[float], bins: int = 10) -> float:
     """PSI between two samples of a variable in [0,1]."""
+
     def hist(xs: list[float]) -> list[float]:
         h = [0] * bins
         for x in xs:
@@ -126,9 +127,15 @@ def port_metrics(monthly_returns: list[float]) -> dict:
     # expected utility: mean log-wealth growth (risk-averse, SPEC-11 spirit)
     eu = _mean([math.log(1 + r) for r in monthly_returns if r > -1])
     return {
-        "cagr": cagr, "sharpe": sharpe, "sortino": sortino, "calmar": calmar,
-        "max_drawdown": mdd, "expected_utility": eu, "vol": sd * math.sqrt(12),
-        "final_mult": eq[-1], "months": len(monthly_returns),
+        "cagr": cagr,
+        "sharpe": sharpe,
+        "sortino": sortino,
+        "calmar": calmar,
+        "max_drawdown": mdd,
+        "expected_utility": eu,
+        "vol": sd * math.sqrt(12),
+        "final_mult": eq[-1],
+        "months": len(monthly_returns),
     }
 
 
@@ -159,12 +166,22 @@ def strategy_returns(records: list[DecisionRecord], vn30: set[str], frac: float 
         vn30r = [r.fwd_return for r in recs if r.ticker in vn30]
         series["VN30"].append(_mean(vn30r) if vn30r else mkt)
         # factor strategies (top quintile by single factor)
-        series["Value"].append(_mean([r.fwd_return for r in _select_top(recs, lambda r: r.value, frac)]))
-        series["Momentum"].append(_mean([r.fwd_return for r in _select_top(recs, lambda r: r.momentum, frac)]))
-        series["Quality"].append(_mean([r.fwd_return for r in _select_top(recs, lambda r: r.quality, frac)]))
-        series["Growth"].append(_mean([r.fwd_return for r in _select_top(recs, lambda r: r.momentum + r.quality, frac)]))
+        series["Value"].append(
+            _mean([r.fwd_return for r in _select_top(recs, lambda r: r.value, frac)])
+        )
+        series["Momentum"].append(
+            _mean([r.fwd_return for r in _select_top(recs, lambda r: r.momentum, frac)])
+        )
+        series["Quality"].append(
+            _mean([r.fwd_return for r in _select_top(recs, lambda r: r.quality, frac)])
+        )
+        series["Growth"].append(
+            _mean([r.fwd_return for r in _select_top(recs, lambda r: r.momentum + r.quality, frac)])
+        )
         # Athena: top quintile by posterior probability
-        series["Athena"].append(_mean([r.fwd_return for r in _select_top(recs, lambda r: r.posterior, frac)]))
+        series["Athena"].append(
+            _mean([r.fwd_return for r in _select_top(recs, lambda r: r.posterior, frac)])
+        )
     return series
 
 
@@ -208,6 +225,7 @@ def study_seed(seed: int) -> dict:
 
     # Stability: posterior drift under +/-eps feature perturbation (sample)
     import random as _r
+
     rr = _r.Random(seed)
     sample = rr.sample(records, min(1000, len(records)))
     flips, drift = 0, 0.0
@@ -220,9 +238,11 @@ def study_seed(seed: int) -> dict:
     stability_drift = drift / len(sample)
 
     # W4 feature importance
-    feats = {"quality": [r.quality for r in records],
-             "value": [r.value for r in records],
-             "momentum": [r.momentum for r in records]}
+    feats = {
+        "quality": [r.quality for r in records],
+        "value": [r.value for r in records],
+        "momentum": [r.momentum for r in records],
+    }
     corr = {k: pearson(v, [float(y) for y in labels]) for k, v in feats.items()}
     mi = {k: mutual_information(v, labels) for k, v in feats.items()}
     # permutation importance: shuffle a feature, recompute accuracy drop
@@ -257,13 +277,23 @@ def study_seed(seed: int) -> dict:
     e_recs = [r for r in records if r.month in early]
     l_recs = [r for r in records if r.month in late]
     drift_metrics = {
-        "posterior_psi": population_stability_index([r.posterior for r in e_recs], [r.posterior for r in l_recs]),
-        "confidence_psi": population_stability_index([r.confidence for r in e_recs], [r.confidence for r in l_recs]),
-        "quality_psi": population_stability_index([r.quality for r in e_recs], [r.quality for r in l_recs]),
+        "posterior_psi": population_stability_index(
+            [r.posterior for r in e_recs], [r.posterior for r in l_recs]
+        ),
+        "confidence_psi": population_stability_index(
+            [r.confidence for r in e_recs], [r.confidence for r in l_recs]
+        ),
+        "quality_psi": population_stability_index(
+            [r.quality for r in e_recs], [r.quality for r in l_recs]
+        ),
         "decision_rate_early": _mean([1.0 if r.posterior > 0.5 else 0.0 for r in e_recs]),
         "decision_rate_late": _mean([1.0 if r.posterior > 0.5 else 0.0 for r in l_recs]),
-        "accuracy_early": _mean([1.0 if (r.posterior > 0.5) == bool(r.outperformed) else 0.0 for r in e_recs]),
-        "accuracy_late": _mean([1.0 if (r.posterior > 0.5) == bool(r.outperformed) else 0.0 for r in l_recs]),
+        "accuracy_early": _mean(
+            [1.0 if (r.posterior > 0.5) == bool(r.outperformed) else 0.0 for r in e_recs]
+        ),
+        "accuracy_late": _mean(
+            [1.0 if (r.posterior > 0.5) == bool(r.outperformed) else 0.0 for r in l_recs]
+        ),
     }
 
     # W6/W8 strategies
@@ -273,22 +303,34 @@ def study_seed(seed: int) -> dict:
     # confidence distribution
     confs = [r.confidence for r in records]
     conf_dist = {
-        "mean": _mean(confs), "min": min(confs), "max": max(confs),
+        "mean": _mean(confs),
+        "min": min(confs),
+        "max": max(confs),
         "p25": statistics.quantiles(confs, n=4)[0],
         "p50": statistics.median(confs),
         "p75": statistics.quantiles(confs, n=4)[2],
     }
 
     return {
-        "seed": seed, "n_decisions": len(records), "n_months": len(months),
+        "seed": seed,
+        "n_decisions": len(records),
+        "n_months": len(months),
         "base_rate_outperform": _mean([float(y) for y in labels]),
-        "accuracy": acc, "auc": auc, "brier": br, "ece": ece,
-        "eu_spread": eu_spread, "stability_flip": stability_flip,
+        "accuracy": acc,
+        "auc": auc,
+        "brier": br,
+        "ece": ece,
+        "eu_spread": eu_spread,
+        "stability_flip": stability_flip,
         "stability_drift": stability_drift,
-        "calibration_rows": rows, "confidence_dist": conf_dist,
-        "correlation": corr, "mutual_information": mi,
-        "permutation_importance": perm_imp, "shapley": shap,
-        "drift": drift_metrics, "strategies": strat_metrics,
+        "calibration_rows": rows,
+        "confidence_dist": conf_dist,
+        "correlation": corr,
+        "mutual_information": mi,
+        "permutation_importance": perm_imp,
+        "shapley": shap,
+        "drift": drift_metrics,
+        "strategies": strat_metrics,
         "strategy_monthly": {k: v for k, v in strat.items()},
     }
 
@@ -298,6 +340,7 @@ def shapley_features(records: list[DecisionRecord], seed: int) -> dict:
     game (all 2^3 coalitions). Absent features are set to the neutral 0.5.
     This IS SHAP, computed exactly on a small feature set (no library)."""
     import random as _r
+
     rr = _r.Random(seed + 7)
     idxs = rr.sample(range(len(records)), min(2000, len(records)))
     feats = ("quality", "value", "momentum")
@@ -314,12 +357,14 @@ def shapley_features(records: list[DecisionRecord], seed: int) -> dict:
         return correct / len(idxs)
 
     from itertools import combinations
+
     cache: dict[frozenset, float] = {}
     for k in range(4):
         for combo in combinations(feats, k):
             cache[frozenset(combo)] = acc_for(frozenset(combo))
     shap = {}
     import math as _m
+
     for f in feats:
         val = 0.0
         others = [x for x in feats if x != f]
@@ -336,6 +381,7 @@ def shapley_features(records: list[DecisionRecord], seed: int) -> dict:
 def bootstrap_diff_ci(a: list[float], b: list[float], iters: int = 5000, seed: int = 1):
     """Paired bootstrap CI for mean(a-b)."""
     import random as _r
+
     rr = _r.Random(seed)
     diffs = [x - y for x, y in zip(a, b, strict=False)]
     n = len(diffs)
@@ -363,14 +409,18 @@ def main() -> None:
     for s in seeds:
         r = study_seed(s)
         per_seed.append(r)
-        print(f"seed={s} acc={r['accuracy']:.4f} auc={r['auc']:.4f} ece={r['ece']:.4f} "
-              f"brier={r['brier']:.4f} Athena_sharpe={r['strategies']['Athena']['sharpe']:.3f} "
-              f"VNINDEX_sharpe={r['strategies']['VNINDEX']['sharpe']:.3f}")
+        print(
+            f"seed={s} acc={r['accuracy']:.4f} auc={r['auc']:.4f} ece={r['ece']:.4f} "
+            f"brier={r['brier']:.4f} Athena_sharpe={r['strategies']['Athena']['sharpe']:.3f} "
+            f"VNINDEX_sharpe={r['strategies']['VNINDEX']['sharpe']:.3f}"
+        )
     elapsed = time.perf_counter() - t0
 
     out = {
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "seeds": seeds, "n_seeds": len(seeds), "elapsed_s": round(elapsed, 1),
+        "seeds": seeds,
+        "n_seeds": len(seeds),
+        "elapsed_s": round(elapsed, 1),
         "per_seed": per_seed,
     }
     path = Path(__file__).resolve().parents[1] / "research" / "experiments" / "study.json"

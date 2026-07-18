@@ -15,7 +15,7 @@ import pytest
 from fastapi.testclient import TestClient
 from scripts.daily_report import generate_report, render_markdown
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from api.main import create_app
@@ -53,7 +53,7 @@ class TestConfigFlag:
 
 
 @pytest.fixture()
-def factory() -> sessionmaker:
+def factory() -> sessionmaker[Session]:
     engine = create_engine(
         "sqlite+pysqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
@@ -62,7 +62,7 @@ def factory() -> sessionmaker:
 
 
 class TestPilotStatusEndpoint:
-    def test_reports_decision_support_posture(self, factory: sessionmaker) -> None:
+    def test_reports_decision_support_posture(self, factory: sessionmaker[Session]) -> None:
         client = TestClient(create_app(settings=_settings(pilot=True), session_factory=factory))
         payload = client.get("/pilot/status").json()
         # The non-negotiable guarantees must be asserted false/true explicitly.
@@ -73,11 +73,11 @@ class TestPilotStatusEndpoint:
         assert payload["human_approval_required"] is True
         assert payload["audit_trail"] is True
 
-    def test_health_full_surfaces_pilot_mode(self, factory: sessionmaker) -> None:
+    def test_health_full_surfaces_pilot_mode(self, factory: sessionmaker[Session]) -> None:
         client = TestClient(create_app(settings=_settings(pilot=True), session_factory=factory))
         assert client.get("/health/full").json()["pilot_mode"] is True
 
-    def test_pilot_mode_off_by_default(self, factory: sessionmaker) -> None:
+    def test_pilot_mode_off_by_default(self, factory: sessionmaker[Session]) -> None:
         client = TestClient(create_app(settings=_settings(pilot=False), session_factory=factory))
         assert client.get("/pilot/status").json()["pilot_mode"] is False
         # even with pilot flag off, the structural guarantees hold
@@ -109,7 +109,9 @@ def _audit(action: str, status: str, created_at: datetime) -> AuditRow:
 
 
 class TestDailyReport:
-    def test_counts_decisions_reviews_and_audit_for_the_day(self, factory: sessionmaker) -> None:
+    def test_counts_decisions_reviews_and_audit_for_the_day(
+        self, factory: sessionmaker[Session]
+    ) -> None:
         day = date(2026, 7, 17)
         in_day = datetime(2026, 7, 17, 10, tzinfo=timezone.utc)
         other_day = datetime(2026, 7, 16, 10, tzinfo=timezone.utc)
@@ -139,7 +141,7 @@ class TestDailyReport:
         assert report["audit_events_today"]["decision:UPDATE"] == 2
         assert report["audit_events_today"]["decision:CREATE"] == 1
 
-    def test_empty_day_renders_clean_markdown(self, factory: sessionmaker) -> None:
+    def test_empty_day_renders_clean_markdown(self, factory: sessionmaker[Session]) -> None:
         report = generate_report(factory, date(2026, 7, 17))
         assert report["decisions_created_today"] == 0
         markdown = render_markdown(report)

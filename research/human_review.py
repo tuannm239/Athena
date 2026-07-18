@@ -76,11 +76,16 @@ def simulate(seed: int) -> dict:
         final_ret += edge if final_long else 0.0
 
     return {
-        "seed": seed, "n": n, "override_rate": overrides / n,
+        "seed": seed,
+        "n": n,
+        "override_rate": overrides / n,
         "reasons": dict(reasons),
-        "athena_acc": ath_correct / n, "human_acc": human_correct / n,
+        "athena_acc": ath_correct / n,
+        "human_acc": human_correct / n,
         "final_acc": final_correct / n,
-        "athena_ret": ath_ret / n, "human_ret": human_ret / n, "final_ret": final_ret / n,
+        "athena_ret": ath_ret / n,
+        "human_ret": human_ret / n,
+        "final_ret": final_ret / n,
     }
 
 
@@ -92,20 +97,22 @@ def main() -> None:
         return statistics.mean([r[k] for r in rows])
 
     print("=== HUMAN REVIEW OVERRIDE SIMULATION (5 seeds, analyst skill=0.51) ===")
-    print(f"override_rate       {m('override_rate')*100:.1f}%")
+    print(f"override_rate       {m('override_rate') * 100:.1f}%")
     reasons = Counter()
     for r in rows:
         reasons.update(r["reasons"])
     total = sum(reasons.values())
     print("override reasons:")
     for reason, c in reasons.most_common():
-        print(f"   {reason:28} {c/total*100:.1f}%")
+        print(f"   {reason:28} {c / total * 100:.1f}%")
     print(f"\n{'policy':<22}{'accuracy':>10}{'mean edge/decision':>20}")
     print(f"{'Athena alone':<22}{m('athena_acc'):>10.4f}{m('athena_ret'):>20.5f}")
     print(f"{'Human alone':<22}{m('human_acc'):>10.4f}{m('human_ret'):>20.5f}")
     print(f"{'Athena+Human override':<22}{m('final_acc'):>10.4f}{m('final_ret'):>20.5f}")
-    print(f"\noverride net effect on accuracy: {(m('final_acc')-m('athena_acc'))*100:+.2f} pp")
-    print(f"override net effect on edge:     {(m('final_ret')-m('athena_ret')):+.5f} per decision")
+    print(f"\noverride net effect on accuracy: {(m('final_acc') - m('athena_acc')) * 100:+.2f} pp")
+    print(
+        f"override net effect on edge:     {(m('final_ret') - m('athena_ret')):+.5f} per decision"
+    )
 
 
 if __name__ == "__main__":

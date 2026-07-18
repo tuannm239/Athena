@@ -18,16 +18,29 @@ def main() -> None:
     d = json.loads(STUDY.read_text())
     per = d["per_seed"]
     ns = len(per)
-    print(f"seeds={ns}  commit-basis study generated {d['generated_at']}  elapsed={d['elapsed_s']}s\n")
+    print(
+        f"seeds={ns}  commit-basis study generated {d['generated_at']}  elapsed={d['elapsed_s']}s\n"
+    )
 
     # --- decision-quality metrics (W2/W3) ---
     def col(k):
         return [p[k] for p in per]
 
-    for k in ("accuracy", "auc", "brier", "ece", "eu_spread", "stability_flip", "stability_drift", "base_rate_outperform"):
+    for k in (
+        "accuracy",
+        "auc",
+        "brier",
+        "ece",
+        "eu_spread",
+        "stability_flip",
+        "stability_drift",
+        "base_rate_outperform",
+    ):
         xs = col(k)
-        print(f"{k:24} mean={statistics.mean(xs):.4f}  sd={statistics.pstdev(xs):.4f}  "
-              f"min={min(xs):.4f} max={max(xs):.4f}")
+        print(
+            f"{k:24} mean={statistics.mean(xs):.4f}  sd={statistics.pstdev(xs):.4f}  "
+            f"min={min(xs):.4f} max={max(xs):.4f}"
+        )
 
     # --- pooled calibration bins ---
     print("\n=== POOLED CALIBRATION (sum over seeds) ===")
@@ -41,7 +54,7 @@ def main() -> None:
     print(f"{'bin':>6}{'n':>9}{'mean_p':>10}{'hit_rate':>10}{'gap':>9}")
     for lo in sorted(agg):
         n, sp, sh = agg[lo]
-        print(f"{lo:>6.1f}{n:>9}{sp/n:>10.4f}{sh/n:>10.4f}{sp/n - sh/n:>+9.4f}")
+        print(f"{lo:>6.1f}{n:>9}{sp / n:>10.4f}{sh / n:>10.4f}{sp / n - sh / n:>+9.4f}")
 
     # --- feature importance (W4) averaged ---
     print("\n=== FEATURE IMPORTANCE (mean over seeds) ===")
@@ -67,13 +80,25 @@ def main() -> None:
     for name in strat_names:
         means[name] = {
             m: statistics.mean([p["strategies"][name][m] for p in per])
-            for m in ("cagr", "sharpe", "sortino", "calmar", "max_drawdown", "expected_utility", "vol")
+            for m in (
+                "cagr",
+                "sharpe",
+                "sortino",
+                "calmar",
+                "max_drawdown",
+                "expected_utility",
+                "vol",
+            )
         }
-    print(f"{'strategy':<14}{'CAGR':>9}{'Sharpe':>8}{'Sortino':>9}{'Calmar':>8}{'MaxDD':>8}{'EU':>9}{'vol':>8}")
+    print(
+        f"{'strategy':<14}{'CAGR':>9}{'Sharpe':>8}{'Sortino':>9}{'Calmar':>8}{'MaxDD':>8}{'EU':>9}{'vol':>8}"
+    )
     for name in sorted(strat_names, key=lambda n: -means[n]["sharpe"]):
         m = means[name]
-        print(f"{name:<14}{m['cagr']:>9.4f}{m['sharpe']:>8.3f}{m['sortino']:>9.3f}"
-              f"{m['calmar']:>8.3f}{m['max_drawdown']:>8.3f}{m['expected_utility']:>9.5f}{m['vol']:>8.3f}")
+        print(
+            f"{name:<14}{m['cagr']:>9.4f}{m['sharpe']:>8.3f}{m['sortino']:>9.3f}"
+            f"{m['calmar']:>8.3f}{m['max_drawdown']:>8.3f}{m['expected_utility']:>9.5f}{m['vol']:>8.3f}"
+        )
 
     # paired bootstrap: Athena vs each benchmark on per-seed Sharpe & CAGR
     print("\n=== ATHENA vs BENCHMARK — paired bootstrap (per-seed Sharpe) ===")
@@ -85,8 +110,12 @@ def main() -> None:
             continue
         b_sh = [p["strategies"][name]["sharpe"] for p in per]
         point, lo, hi, pval = bootstrap_diff_ci(ath_sh, b_sh, seed=7)
-        winrate = statistics.mean([1.0 if a > b else 0.0 for a, b in zip(ath_sh, b_sh, strict=False)])
-        print(f"{name:<14}{point:>+9.3f}  [{lo:+.3f},{hi:+.3f}]{'':>4}{pval:>8.4f}{winrate*100:>6.0f}%")
+        winrate = statistics.mean(
+            [1.0 if a > b else 0.0 for a, b in zip(ath_sh, b_sh, strict=False)]
+        )
+        print(
+            f"{name:<14}{point:>+9.3f}  [{lo:+.3f},{hi:+.3f}]{'':>4}{pval:>8.4f}{winrate * 100:>6.0f}%"
+        )
 
     print("\n=== ATHENA vs BENCHMARK — paired bootstrap (per-seed CAGR) ===")
     print(f"{'benchmark':<14}{'dCAGR':>9}{'95%CI':>22}{'p':>8}{'win%':>7}")
@@ -95,8 +124,12 @@ def main() -> None:
             continue
         b = [p["strategies"][name]["cagr"] for p in per]
         point, lo, hi, pval = bootstrap_diff_ci(ath_cagr, b, seed=7)
-        winrate = statistics.mean([1.0 if a > bb else 0.0 for a, bb in zip(ath_cagr, b, strict=False)])
-        print(f"{name:<14}{point:>+9.4f}  [{lo:+.4f},{hi:+.4f}]{'':>3}{pval:>8.4f}{winrate*100:>6.0f}%")
+        winrate = statistics.mean(
+            [1.0 if a > bb else 0.0 for a, bb in zip(ath_cagr, b, strict=False)]
+        )
+        print(
+            f"{name:<14}{point:>+9.4f}  [{lo:+.4f},{hi:+.4f}]{'':>3}{pval:>8.4f}{winrate * 100:>6.0f}%"
+        )
 
     # --- confidence distribution ---
     print("\n=== CONFIDENCE DISTRIBUTION (mean over seeds) ===")
