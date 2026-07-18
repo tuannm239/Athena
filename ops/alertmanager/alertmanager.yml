@@ -1,0 +1,42 @@
+# Alertmanager routing (Phase 5, W3).
+#
+# Receivers are placeholders wired via environment/secret substitution at
+# deploy time — set SLACK_WEBHOOK_URL / PAGERDUTY_KEY / SMTP_* on the host.
+# Critical alerts page; warnings/info go to the ops channel. Tune to taste.
+
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: ops-default
+  group_by: ["alertname", "severity"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers: ['severity="critical"']
+      receiver: pager
+      repeat_interval: 1h
+    - matchers: ['severity=~"warning|info"']
+      receiver: ops-default
+
+receivers:
+  - name: ops-default
+    # Example Slack webhook (URL injected from secrets at deploy time):
+    # slack_configs:
+    #   - api_url: ${SLACK_WEBHOOK_URL}
+    #     channel: "#athena-ops"
+    #     title: "{{ .CommonAnnotations.summary }}"
+    #     text: "{{ .CommonAnnotations.description }}"
+
+  - name: pager
+    # Example PagerDuty integration (routing key from secrets):
+    # pagerduty_configs:
+    #   - routing_key: ${PAGERDUTY_KEY}
+    #     description: "{{ .CommonAnnotations.summary }}"
+
+inhibit_rules:
+  # A down API makes its latency/error alerts redundant — suppress them.
+  - source_matchers: ['alertname="AthenaApiDown"']
+    target_matchers: ['severity=~"warning|critical"']
+    equal: ["service"]

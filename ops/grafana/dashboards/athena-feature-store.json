@@ -1,0 +1,38 @@
+{
+  "title": "ATHENA — Feature Store",
+  "uid": "athena-feature-store",
+  "schemaVersion": 39,
+  "editable": true,
+  "time": { "from": "now-30d", "to": "now" },
+  "refresh": "5m",
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Total feature definitions",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+      "targets": [{ "expr": "sum(athena_feature_definitions_by_status_total)", "legendFormat": "features" }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Active features",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 0 },
+      "targets": [{ "expr": "sum(athena_feature_definitions_by_status_total{status=\"ACTIVE\"})", "legendFormat": "active" }]
+    },
+    {
+      "id": 3,
+      "type": "piechart",
+      "title": "Feature definitions by status",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 0 },
+      "targets": [{ "expr": "athena_feature_definitions_by_status_total", "legendFormat": "{{status}}" }]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Feature definitions by status over time",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 6 },
+      "targets": [{ "expr": "athena_feature_definitions_by_status_total", "legendFormat": "{{status}}" }]
+    }
+  ]
+}

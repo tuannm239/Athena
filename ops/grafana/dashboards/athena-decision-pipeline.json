@@ -1,0 +1,57 @@
+{
+  "title": "ATHENA — Decision Pipeline",
+  "uid": "athena-decision-pipeline",
+  "schemaVersion": 39,
+  "editable": true,
+  "time": { "from": "now-24h", "to": "now" },
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "type": "piechart",
+      "title": "Decisions by status (system of record)",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "targets": [{ "expr": "athena_decisions_by_status_total", "legendFormat": "{{status}}" }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Approved / Rejected (lifetime)",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "targets": [
+        { "expr": "sum(athena_decisions_by_status_total{status=\"APPROVED\"})", "legendFormat": "approved" },
+        { "expr": "sum(athena_decisions_by_status_total{status=\"REJECTED\"})", "legendFormat": "rejected" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Awaiting human review",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 20 } ] } } },
+      "targets": [{ "expr": "sum(athena_decisions_by_status_total{status=\"UNDER_REVIEW\"})", "legendFormat": "under review" }]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Decision API traffic (create / list / review)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [{ "expr": "sum by (method) (rate(athena_http_requests_total{path=~\"/decisions.*\"}[5m]))", "legendFormat": "{{method}}" }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Decision endpoint p95 latency",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [{ "expr": "histogram_quantile(0.95, sum by (le, path) (rate(athena_http_request_duration_seconds_bucket{path=~\"/decisions.*\"}[5m])))", "legendFormat": "{{path}}" }]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Decision audit events (insert-only trail)",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "targets": [{ "expr": "athena_audit_events_total{entity_type=\"decision\"}", "legendFormat": "decision audit rows" }]
+    }
+  ]
+}

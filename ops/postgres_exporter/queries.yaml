@@ -1,0 +1,72 @@
+# Custom postgres_exporter queries (Phase 5, W3).
+#
+# These surface ATHENA domain state as Prometheus gauges by reading the
+# system of record — read-only SELECTs, no application code involved and
+# no violation of the clean-architecture rule (the domain never imports
+# infrastructure; here infrastructure observes the domain's persisted
+# state). Powers the Decision Pipeline, Data Pipeline, Knowledge Graph
+# and Feature Store dashboards.
+
+athena_decisions_by_status:
+  query: "SELECT status, count(*) AS total FROM decisions GROUP BY status"
+  metrics:
+    - status:
+        usage: "LABEL"
+        description: "Decision lifecycle status"
+    - total:
+        usage: "GAUGE"
+        description: "Decisions in this status"
+
+athena_datasets_by_status:
+  query: "SELECT status, count(*) AS total FROM datasets GROUP BY status"
+  metrics:
+    - status:
+        usage: "LABEL"
+        description: "Dataset lifecycle status (PUBLISHED / QUARANTINED / ...)"
+    - total:
+        usage: "GAUGE"
+        description: "Datasets in this status"
+
+athena_kg_nodes_by_type:
+  query: "SELECT type, count(*) AS total FROM kg_nodes GROUP BY type"
+  metrics:
+    - type:
+        usage: "LABEL"
+        description: "Knowledge-graph node type"
+    - total:
+        usage: "GAUGE"
+        description: "KG nodes of this type"
+
+athena_kg_edges_active:
+  query: "SELECT count(*) AS total FROM kg_edges WHERE removed_version IS NULL"
+  metrics:
+    - total:
+        usage: "GAUGE"
+        description: "Active (non-removed) KG edges"
+
+athena_feature_definitions_by_status:
+  query: "SELECT status, count(*) AS total FROM feature_definitions GROUP BY status"
+  metrics:
+    - status:
+        usage: "LABEL"
+        description: "Feature definition status"
+    - total:
+        usage: "GAUGE"
+        description: "Feature definitions in this status"
+
+athena_audit_events_total:
+  query: "SELECT entity_type, count(*) AS total FROM audit_log GROUP BY entity_type"
+  metrics:
+    - entity_type:
+        usage: "LABEL"
+        description: "Audited entity type (decision / security / ...)"
+    - total:
+        usage: "GAUGE"
+        description: "Audit rows for this entity type (insert-only)"
+
+athena_users_total:
+  query: "SELECT count(*) AS total FROM users"
+  metrics:
+    - total:
+        usage: "GAUGE"
+        description: "Registered users"

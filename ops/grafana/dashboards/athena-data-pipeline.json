@@ -1,0 +1,53 @@
+{
+  "title": "ATHENA — Data Pipeline",
+  "uid": "athena-data-pipeline",
+  "schemaVersion": 39,
+  "editable": true,
+  "time": { "from": "now-7d", "to": "now" },
+  "refresh": "1m",
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Published datasets",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+      "targets": [{ "expr": "sum(athena_datasets_by_status_total{status=\"PUBLISHED\"})", "legendFormat": "published" }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Quarantined datasets",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 0 },
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } } },
+      "targets": [{ "expr": "sum(athena_datasets_by_status_total{status=\"QUARANTINED\"})", "legendFormat": "quarantined" }]
+    },
+    {
+      "id": 3,
+      "type": "piechart",
+      "title": "Datasets by status",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 0 },
+      "targets": [{ "expr": "athena_datasets_by_status_total", "legendFormat": "{{status}}" }]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Published dataset count over time",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "targets": [{ "expr": "athena_datasets_by_status_total{status=\"PUBLISHED\"}", "legendFormat": "published" }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "New datasets published (24h increase)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "targets": [{ "expr": "increase(athena_datasets_by_status_total{status=\"PUBLISHED\"}[24h])", "legendFormat": "+published/24h" }]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Market/data API traffic (ingestion surface)",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+      "targets": [{ "expr": "sum by (path) (rate(athena_http_requests_total{path=~\"/market.*\"}[5m]))", "legendFormat": "{{path}}" }]
+    }
+  ]
+}

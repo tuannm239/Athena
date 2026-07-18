@@ -1,0 +1,58 @@
+{
+  "title": "ATHENA — System Health",
+  "uid": "athena-system-health",
+  "schemaVersion": 39,
+  "editable": true,
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Targets up",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "mappings": [
+        { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+      ] } },
+      "targets": [{ "expr": "up", "legendFormat": "{{job}}" }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "App version",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
+      "targets": [{ "expr": "athena_app_info", "legendFormat": "{{version}}" }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Global requests / s",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+      "targets": [{ "expr": "sum(rate(athena_http_requests_total[5m]))", "legendFormat": "rps" }]
+    },
+    {
+      "id": 4,
+      "type": "gauge",
+      "title": "Error share (5xx)",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "thresholds": { "steps": [
+        { "color": "green", "value": null }, { "color": "orange", "value": 0.02 }, { "color": "red", "value": 0.05 }
+      ] } } },
+      "targets": [{ "expr": "sum(rate(athena_http_requests_total{status=~\"5..\"}[5m])) / clamp_min(sum(rate(athena_http_requests_total[5m])),1)", "legendFormat": "5xx" }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Scrape target availability",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "targets": [{ "expr": "up", "legendFormat": "{{job}}" }]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Registered users",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "targets": [{ "expr": "athena_users_total", "legendFormat": "users" }]
+    }
+  ]
+}

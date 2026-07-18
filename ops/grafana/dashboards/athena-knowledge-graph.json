@@ -1,0 +1,45 @@
+{
+  "title": "ATHENA — Knowledge Graph",
+  "uid": "athena-knowledge-graph",
+  "schemaVersion": 39,
+  "editable": true,
+  "time": { "from": "now-30d", "to": "now" },
+  "refresh": "5m",
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Total nodes",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+      "targets": [{ "expr": "sum(athena_kg_nodes_by_type_total)", "legendFormat": "nodes" }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Active edges",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 0 },
+      "targets": [{ "expr": "athena_kg_edges_active_total", "legendFormat": "edges" }]
+    },
+    {
+      "id": 3,
+      "type": "piechart",
+      "title": "Nodes by type",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 0 },
+      "targets": [{ "expr": "athena_kg_nodes_by_type_total", "legendFormat": "{{type}}" }]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Nodes by type over time",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "targets": [{ "expr": "athena_kg_nodes_by_type_total", "legendFormat": "{{type}}" }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Active edge count over time",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "targets": [{ "expr": "athena_kg_edges_active_total", "legendFormat": "active edges" }]
+    }
+  ]
+}

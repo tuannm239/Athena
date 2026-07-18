@@ -1,0 +1,74 @@
+groups:
+  - name: athena-availability
+    rules:
+      - alert: AthenaApiDown
+        expr: up{job="athena-api"} == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "ATHENA API is down"
+          description: "Prometheus cannot scrape athena-api for >1m."
+
+      - alert: PostgresDown
+        expr: up{job="postgres"} == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "PostgreSQL unreachable"
+          description: "postgres-exporter target down for >2m — system of record at risk."
+
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 2m
+        labels: { severity: warning }
+        annotations:
+          summary: "Redis unreachable"
+          description: "Cache down for >2m; API degrades but continues (ephemeral cache)."
+
+  - name: athena-api-slo
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(athena_http_requests_total{status=~"5.."}[5m]))
+            / sum(rate(athena_http_requests_total[5m])) > 0.05
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "API 5xx error rate > 5%"
+          description: "Server-error share above 5% for 5m — investigate logs (level=ERROR)."
+
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(athena_http_request_duration_seconds_bucket[5m]))) > 1
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "API p95 latency > 1s"
+          description: "95th-percentile request latency above 1s for 10m."
+
+      - alert: AuthAbuse
+        expr: sum(rate(athena_http_requests_total{path=~"/auth.*",status="429"}[5m])) > 1
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Sustained auth rate-limiting"
+          description: "Auth endpoints returning 429 — possible credential-stuffing."
+
+  - name: athena-domain
+    rules:
+      - alert: DatasetsQuarantined
+        expr: athena_datasets_by_status_total{status="QUARANTINED"} > 0
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: "Quarantined datasets present"
+          description: "A data-pipeline run failed quality gates; inspect the datasets table (RUNBOOK)."
+
+      - alert: NoDecisionActivity
+        expr: sum(increase(athena_http_requests_total{path="/decisions",method="POST"}[24h])) == 0
+        for: 30m
+        labels: { severity: info }
+        annotations:
+          summary: "No decisions created in 24h"
+          description: "Pilot inactivity signal — expected outside market hours; informational."

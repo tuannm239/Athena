@@ -109,6 +109,33 @@ services:
       retries: 10
     logging: *default-logging
 
+  # PostgreSQL exporter — standard metrics + custom domain-state queries
+  # (Decision/Data pipeline, KG, Feature Store gauges). Read-only.
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: postgresql://athena:${POSTGRES_PASSWORD}@db:5432/athena?sslmode=disable
+      PG_EXPORTER_EXTEND_QUERY_PATH: /etc/pg_exporter/queries.yaml
+    volumes:
+      - ./ops/postgres_exporter/queries.yaml:/etc/pg_exporter/queries.yaml:ro
+    depends_on:
+      db: { condition: service_healthy }
+    expose: ["9187"]
+    logging: *default-logging
+
+  # Redis exporter — cache hit/miss, memory, connected clients, latency.
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    depends_on:
+      redis: { condition: service_healthy }
+    expose: ["9121"]
+    logging: *default-logging
+
   prometheus:
     image: prom/prometheus:v2.53.0
     restart: unless-stopped
