@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useTheme } from "@/providers/theme-provider";
 import { useAuthStore } from "@/stores/auth-store";
 import { useCommandStore } from "@/stores/command-store";
+import { NotificationBell } from "@/components/notification-bell";
 
 export function Navbar({ onToggleSidebar }: { onToggleSidebar: () => void }) {
   const { theme, toggle } = useTheme();
@@ -55,6 +56,7 @@ export function Navbar({ onToggleSidebar }: { onToggleSidebar: () => void }) {
         >
           <Search className="h-4 w-4" />
         </Button>
+        {user ? <NotificationBell /> : null}
         {user ? <Badge variant="primary">{user.role}</Badge> : null}
         <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}

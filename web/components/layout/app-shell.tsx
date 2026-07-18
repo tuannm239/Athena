@@ -7,9 +7,16 @@ import { Sidebar } from "./sidebar";
 import { CommandPalette } from "@/components/command-palette";
 import { useCommandStore } from "@/stores/command-store";
 import { useHotkeys, type Hotkey } from "@/hooks/use-hotkeys";
+import { useNotificationSync } from "@/hooks/use-notification-sync";
 import { cn } from "@/lib/utils";
 
 const NO_SHELL = ["/login"];
+
+/** Runs notification derivation only inside the authenticated shell. */
+function NotificationSync() {
+  useNotificationSync();
+  return null;
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -52,6 +59,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
       <CommandPalette />
+      <NotificationSync />
     </div>
   );
 }
