@@ -1,0 +1,213 @@
+name: CD — build, scan, publish, deploy
+
+# Production pipeline (Phase 5, W2 + W4):
+#   Lint → Type Check → Tests → Coverage → Security Scan → Build Images →
+#   Image Scan → Publish → Deploy.
+# PR-time gates live in ci.yml / web-ci.yml; this pipeline is the release
+# path and runs on main and version tags (manual dispatch supported).
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write        # push images to GHCR
+  security-events: write # upload Trivy SARIF to code scanning
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_API: ghcr.io/${{ github.repository }}/api
+  IMAGE_WEB: ghcr.io/${{ github.repository }}/web
+
+jobs:
+  # ---- 1. backend quality gate: lint → type → tests → coverage -------------
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: athena
+          POSTGRES_PASSWORD: athena
+          POSTGRES_DB: athena
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U athena"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    env:
+      DATABASE_URL: postgresql+psycopg://athena:athena@localhost:5432/athena
+      REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --frozen
+      - name: Lint
+        run: uv run ruff check .
+      - name: Format check
+        run: uv run ruff format --check .
+      - name: Type check (strict)
+        run: uv run mypy
+      - name: Migrations apply cleanly
+        run: uv run alembic upgrade head
+      - name: Tests with coverage (gate ≥ 90%)
+        run: uv run pytest -q --cov=backend --cov-report=term-missing --cov-fail-under=90
+
+  # ---- 2. dependency CVE scan (W4): python + web ---------------------------
+  security-deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - name: Export locked requirements
+        run: uv export --frozen --no-dev --no-emit-project -o requirements.txt
+      - name: pip-audit (Python dependencies)
+        uses: pypa/gh-action-pip-audit@v1.1.0
+        with:
+          inputs: requirements.txt
+          # Advisory-ignore list lives here when a CVE is triaged & accepted
+          # (SECURITY_HARDENING_REPORT.md records the justification).
+          # ignore-vulns: |
+          #   GHSA-xxxx-xxxx-xxxx
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm, cache-dependency-path: web/pnpm-lock.yaml }
+      - name: pnpm audit (web dependencies)
+        working-directory: web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm audit --audit-level high
+
+  # ---- 3. static analysis: CodeQL (python + js) ----------------------------
+  codeql:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        language: [python, javascript-typescript]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+      - uses: github/codeql-action/analyze@v3
+
+  # ---- 4. build, scan, and publish images ----------------------------------
+  images:
+    needs: [quality, security-deps]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image metadata (api)
+        id: meta_api
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_API }}
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+      - name: Build API image (load for scan)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.production
+          load: true
+          tags: ${{ env.IMAGE_API }}:scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Trivy scan — API image (fail on HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.IMAGE_API }}:scan
+          format: sarif
+          output: trivy-api.sarif
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+      - name: Upload API scan SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with: { sarif_file: trivy-api.sarif, category: trivy-api }
+      - name: Push API image
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.production
+          push: true
+          tags: ${{ steps.meta_api.outputs.tags }}
+          labels: ${{ steps.meta_api.outputs.labels }}
+          cache-from: type=gha
+      - name: Image metadata (web)
+        id: meta_web
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_WEB }}
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+      - name: Build + push web image
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./web
+          file: web/Dockerfile
+          push: true
+          tags: ${{ steps.meta_web.outputs.tags }}
+          labels: ${{ steps.meta_web.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---- 5. deploy (tags only; requires manual approval on the env) ----------
+  deploy:
+    needs: [images, codeql]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: production   # protected: reviewers approve before this runs
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy release to the pilot host
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          # Pull the freshly published, scanned images and roll the stack.
+          # Secrets (DEPLOY_*) are configured on the `production` environment.
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "::notice::No DEPLOY_HOST configured — deploy is a no-op placeholder."
+            echo "Configure the production environment secrets to enable rollout."
+            exit 0
+          fi
+          install -m 600 /dev/stdin "$HOME/deploy_key" <<< "$DEPLOY_KEY"
+          TAG="${GITHUB_REF_NAME#v}"    # resolve the release tag on the runner
+          # Pass the tag as an argument so it is available on the remote shell.
+          ssh -i "$HOME/deploy_key" -o StrictHostKeyChecking=accept-new \
+            "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- '$TAG'" <<'REMOTE'
+            set -euo pipefail
+            export ATHENA_IMAGE_TAG="$1"
+            cd /opt/athena
+            docker compose -f docker-compose.prod.yml --env-file .env.production pull api web
+            docker compose -f docker-compose.prod.yml --env-file .env.production up -d api web
+            docker compose -f docker-compose.prod.yml --env-file .env.production exec -T api alembic upgrade head
+            curl -fsS http://localhost:8000/health
+          REMOTE

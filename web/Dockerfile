@@ -7,21 +7,23 @@
 # static assets, running as an unprivileged user.
 
 # ---- dependencies ----------------------------------------------------------
-FROM node:20-slim AS deps
+FROM node:22-slim AS deps
 WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm ci
+RUN corepack enable
+COPY package.json pnpm-lock.yaml ./
+RUN corepack prepare pnpm@10.33.0 --activate && pnpm install --frozen-lockfile
 
 # ---- build -----------------------------------------------------------------
-FROM node:20-slim AS build
+FROM node:22-slim AS build
 WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
+RUN pnpm build
 
 # ---- runtime ---------------------------------------------------------------
-FROM node:20-slim AS runtime
+FROM node:22-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
