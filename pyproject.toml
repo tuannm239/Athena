@@ -49,6 +49,9 @@ select = ["E", "F", "I", "B"]
 "backend/infrastructure/alembic/versions/*" = ["E501"]
 # B008: FastAPI's Depends()/Query() in parameter defaults is the framework idiom.
 "backend/api/**" = ["B008"]
+# research/: Phase 4 experiment harnesses (not production code). sys.path
+# bootstrap forces post-path imports (E402); dense table-printing lines (E501).
+"research/**" = ["E402", "E501", "E702", "E731"]
 
 [tool.mypy]
 strict = true

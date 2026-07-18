@@ -9,3 +9,6 @@ __pycache__/
 .coverage
 htmlcov/
 data/
+
+# Phase 4 research: per-seed decision dumps are regenerable; keep only canonical study.json
+research/experiments/decisions_seed*.json
