@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import { Navbar } from "./navbar";
 import { Sidebar } from "./sidebar";
 import { CommandPalette } from "@/components/command-palette";
+import { KeyboardHelp } from "@/components/keyboard-help";
+import { UxEffects } from "@/components/ux-effects";
 import { useCommandStore } from "@/stores/command-store";
 import { useHotkeys, type Hotkey } from "@/hooks/use-hotkeys";
 import { useNotificationSync } from "@/hooks/use-notification-sync";
@@ -22,10 +24,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const toggleCommand = useCommandStore((s) => s.toggle);
+  const setHelpOpen = useCommandStore((s) => s.setHelpOpen);
 
   const hotkeys = useMemo<Hotkey[]>(
-    () => [{ key: "k", meta: true, allowInInput: true, handler: () => toggleCommand() }],
-    [toggleCommand],
+    () => [
+      { key: "k", meta: true, allowInInput: true, handler: () => toggleCommand() },
+      { key: "?", handler: () => setHelpOpen(true) },
+    ],
+    [toggleCommand, setHelpOpen],
   );
   useHotkeys(hotkeys);
 
@@ -59,7 +65,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
       <CommandPalette />
+      <KeyboardHelp />
       <NotificationSync />
+      <UxEffects />
     </div>
   );
 }

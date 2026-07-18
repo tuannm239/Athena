@@ -70,3 +70,18 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 
 .tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* Density preference (Phase 6, WS1). Compact tightens card padding + gaps. */
+:root[data-density="compact"] .p-4 { padding: 0.6rem; }
+:root[data-density="compact"] .gap-4 { gap: 0.6rem; }
+:root[data-density="compact"] .space-y-4 > * + * { margin-top: 0.6rem; }
+
+/* Reduce-motion preference (Phase 6, WS1) + OS prefers-reduced-motion. */
+:root.reduce-motion *,
+:root.reduce-motion *::before,
+:root.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}

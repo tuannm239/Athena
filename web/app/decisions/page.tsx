@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Target } from "lucide-react";
+import { Save, Target, X } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { DecisionStatusBadge } from "@/components/ui/decision-status-badge";
 import { ExportMenu } from "@/components/export-menu";
 import { useDecisions } from "@/hooks/queries";
+import { useUxStore } from "@/stores/ux-store";
 import { decisionColumns } from "@/lib/report-columns";
 import { formatDate, pct } from "@/lib/utils";
 import type { DecisionStatus } from "@/types/api";
@@ -27,6 +28,9 @@ const FILTERS: (DecisionStatus | "ALL")[] = [
 export default function DecisionsPage() {
   const [status, setStatus] = useState<DecisionStatus | "ALL">("ALL");
   const [page, setPage] = useState(0);
+  const savedFilters = useUxStore((s) => s.savedFilters["/decisions"] ?? []);
+  const saveFilter = useUxStore((s) => s.saveFilter);
+  const removeFilter = useUxStore((s) => s.removeFilter);
   const limit = 20;
   const query = useDecisions({
     limit,
@@ -51,7 +55,7 @@ export default function DecisionsPage() {
         }
       />
 
-      <div className="mb-4 flex flex-wrap gap-1" role="tablist" aria-label="Filter by status">
+      <div className="mb-3 flex flex-wrap gap-1" role="tablist" aria-label="Filter by status">
         {FILTERS.map((f) => (
           <Button
             key={f}
@@ -67,6 +71,48 @@ export default function DecisionsPage() {
             {f.replace("_", " ")}
           </Button>
         ))}
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span className="text-xs text-muted-foreground">Saved filters:</span>
+        {savedFilters.length === 0 ? (
+          <span className="text-xs text-muted-foreground">none yet</span>
+        ) : (
+          savedFilters.map((sf) => (
+            <span
+              key={sf.id}
+              className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
+            >
+              <button
+                className="hover:underline"
+                onClick={() => {
+                  const s = new URLSearchParams(sf.query).get("status") as DecisionStatus | null;
+                  setStatus(s ?? "ALL");
+                  setPage(0);
+                }}
+              >
+                {sf.name}
+              </button>
+              <button
+                aria-label={`Delete saved filter ${sf.name}`}
+                className="text-muted-foreground hover:text-loss"
+                onClick={() => removeFilter("/decisions", sf.id)}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))
+        )}
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            const name = window.prompt("Name this filter", `Status: ${status}`);
+            if (name) saveFilter("/decisions", name, `status=${status}`);
+          }}
+        >
+          <Save className="h-3.5 w-3.5" /> Save
+        </Button>
       </div>
 
       <Card>
