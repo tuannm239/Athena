@@ -6,7 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Stat } from "@/components/ui/stat";
+import { ExportMenu } from "@/components/export-menu";
 import { usePortfolios } from "@/hooks/queries";
+import { positionColumns } from "@/lib/report-columns";
 import { money, num, signClass } from "@/lib/utils";
 
 export default function PortfolioPage() {
@@ -15,7 +17,19 @@ export default function PortfolioPage() {
 
   return (
     <>
-      <PageHeader title="Portfolio" description="Holdings, allocation and risk exposure." />
+      <PageHeader
+        title="Portfolio"
+        description="Holdings, allocation and risk exposure."
+        actions={
+          <ExportMenu
+            filename="athena-portfolio"
+            title="Athena — Portfolio"
+            columns={positionColumns}
+            rows={portfolio?.positions ?? []}
+            pdf={{ orientation: "l" }}
+          />
+        }
+      />
 
       {isLoading ? (
         <Skeleton className="h-64 w-full" />

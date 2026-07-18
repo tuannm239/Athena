@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { DecisionStatusBadge } from "@/components/ui/decision-status-badge";
+import { ExportMenu } from "@/components/export-menu";
 import { useDecisions } from "@/hooks/queries";
+import { decisionColumns } from "@/lib/report-columns";
 import { formatDate, pct } from "@/lib/utils";
 import type { DecisionStatus } from "@/types/api";
 
@@ -37,6 +39,16 @@ export default function DecisionsPage() {
       <PageHeader
         title="Decision Center"
         description="Every hypothesis Athena has evaluated. Human approval is mandatory before any decision is acted on."
+        actions={
+          <ExportMenu
+            filename={`athena-decisions-${status.toLowerCase()}`}
+            title="Athena — Decisions"
+            columns={decisionColumns}
+            rows={query.data?.items ?? []}
+            json={query.data?.items ?? []}
+            pdf={{ subtitle: `Filter: ${status}`, orientation: "l" }}
+          />
+        }
       />
 
       <div className="mb-4 flex flex-wrap gap-1" role="tablist" aria-label="Filter by status">

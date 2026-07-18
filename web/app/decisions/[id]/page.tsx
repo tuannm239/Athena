@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/decision-status-badge";
 import { ReviewPanel } from "@/features/decisions/review-panel";
 import { FavoriteButton } from "@/components/ui/favorite-button";
+import { ExportMenu } from "@/components/export-menu";
+import { evidenceColumns } from "@/lib/report-columns";
 import { useDecision } from "@/hooks/queries";
 import { useTrackRecent } from "@/hooks/use-track-recent";
 import { formatDateTime, pct, num, signClass } from "@/lib/utils";
@@ -157,11 +159,19 @@ export default function DecisionDetailPage({ params }: { params: Promise<{ id: s
         {/* Evidence (2 cols) */}
         <div className="space-y-4 lg:col-span-2">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex-row items-center justify-between">
               <CardTitle>
                 Evidence · {supporting.length} supporting · {contradicting.length} contradicting
                 {neutral.length ? ` · ${neutral.length} neutral` : ""}
               </CardTitle>
+              <ExportMenu
+                filename={`athena-evidence-${d.id.slice(0, 8)}`}
+                title="Athena — Evidence"
+                columns={evidenceColumns}
+                rows={d.evidence}
+                pdf={{ subtitle: d.hypothesis, orientation: "l" }}
+                label="Export"
+              />
             </CardHeader>
             <CardContent className="space-y-2">
               {d.evidence.length === 0 ? (
