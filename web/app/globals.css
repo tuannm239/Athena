@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dark-mode-first: dark is the default (:root); .light overrides for opt-in. */
+:root {
+  --background: 222 24% 6%;
+  --foreground: 210 20% 92%;
+  --card: 222 22% 9%;
+  --card-foreground: 210 20% 92%;
+  --popover: 222 24% 8%;
+  --popover-foreground: 210 20% 92%;
+  --primary: 199 89% 52%;
+  --primary-foreground: 222 47% 8%;
+  --secondary: 217 19% 20%;
+  --secondary-foreground: 210 20% 92%;
+  --muted: 217 19% 16%;
+  --muted-foreground: 215 15% 60%;
+  --accent: 217 19% 22%;
+  --accent-foreground: 210 20% 92%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 210 20% 98%;
+  --border: 217 19% 18%;
+  --input: 217 19% 18%;
+  --ring: 199 89% 52%;
+  --gain: 145 63% 49%;
+  --loss: 0 72% 58%;
+  --warn: 38 92% 55%;
+  --radius: 0.5rem;
+}
+
+.light {
+  --background: 210 20% 98%;
+  --foreground: 222 30% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 30% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 30% 12%;
+  --primary: 199 89% 44%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 16% 93%;
+  --secondary-foreground: 222 30% 12%;
+  --muted: 210 16% 93%;
+  --muted-foreground: 215 14% 40%;
+  --accent: 210 16% 90%;
+  --accent-foreground: 222 30% 12%;
+  --destructive: 0 72% 45%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 214 15% 85%;
+  --input: 214 15% 85%;
+  --ring: 199 89% 44%;
+  --gain: 145 63% 38%;
+  --loss: 0 72% 48%;
+  --warn: 38 92% 45%;
+}
+
+* { border-color: hsl(var(--border)); }
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Accessible focus ring for keyboard users (WCAG AA). */
+:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+
+/* Thin, unobtrusive scrollbars for dense financial layouts. */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+.tabular-nums { font-variant-numeric: tabular-nums; }

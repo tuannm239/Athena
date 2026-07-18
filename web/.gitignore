@@ -1,0 +1,10 @@
+node_modules
+.next
+out
+coverage
+playwright-report
+test-results
+storybook-static
+*.tsbuildinfo
+next-env.d.ts
+.env*.local
