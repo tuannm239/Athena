@@ -4,6 +4,7 @@ import { QueryProvider } from "@/providers/query-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { AuthProvider } from "@/providers/auth-provider";
 import { AppShell } from "@/components/layout/app-shell";
+import { PwaRegister } from "@/components/pwa-register";
 
 export const metadata: Metadata = {
   title: { default: "Athena — Decision Intelligence", template: "%s · Athena" },
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </AuthProvider>
           </QueryProvider>
         </ThemeProvider>
+        <PwaRegister />
       </body>
     </html>
   );
