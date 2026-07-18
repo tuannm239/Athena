@@ -2,6 +2,8 @@ __pycache__/
 *.pyc
 .venv/
 .env
+.env.production
+.env.staging
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/

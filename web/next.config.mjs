@@ -2,6 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Standalone output produces a self-contained server bundle for the
+  // production container image (web/Dockerfile) — no dev toolchain shipped.
+  output: "standalone",
   async rewrites() {
     // Proxy API calls to the Athena backend (SPEC-08). Configurable via env.
     const backend = process.env.ATHENA_API_URL || "http://localhost:8000";

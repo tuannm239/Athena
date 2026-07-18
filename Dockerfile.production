@@ -1,0 +1,59 @@
+# syntax=docker/dockerfile:1
+#
+# ATHENA API — production image (Phase 5, W1).
+#
+# Multi-stage: a `builder` resolves the locked dependency set into a venv,
+# the final `runtime` stage copies only that venv + application code and
+# runs as an unprivileged user. No build tools, no dev dependencies, no
+# uv in the final image. Reproducible from the checked-in uv.lock.
+
+# ---- builder ---------------------------------------------------------------
+FROM python:3.13-slim AS builder
+
+COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /usr/local/bin/uv
+
+WORKDIR /app
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never
+
+# Only the lockfiles first, so the dependency layer caches across code changes.
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
+
+# ---- runtime ---------------------------------------------------------------
+FROM python:3.13-slim AS runtime
+
+# Non-root runtime user (SECURITY_HARDENING: never run the app as root).
+RUN groupadd --gid 10001 athena \
+    && useradd --uid 10001 --gid athena --no-create-home --shell /usr/sbin/nologin athena \
+    && mkdir -p /app/data/snapshots /app/data/pilot-reports \
+    && chown -R athena:athena /app
+
+WORKDIR /app
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH=/app/backend \
+    ATHENA_ENV=production
+
+# Resolved virtualenv from the builder (no uv, no caches in the final image).
+COPY --from=builder --chown=athena:athena /app/.venv /app/.venv
+
+# Application code + migrations + operational scripts (pilot daily report).
+COPY --chown=athena:athena alembic.ini ./
+COPY --chown=athena:athena backend/ backend/
+COPY --chown=athena:athena scripts/ scripts/
+
+USER athena
+EXPOSE 8000
+
+# Liveness probe baked into the image (compose/k8s can still override).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import urllib.request,sys; sys.exit(0) \
+    if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status==200 else sys.exit(1)"
+
+# Gunicorn-managed uvicorn workers would add a dependency; uvicorn's own
+# multi-worker mode is sufficient behind Nginx. WEB_CONCURRENCY tunes it.
+CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY:-2} --proxy-headers --forwarded-allow-ips '*'"]
