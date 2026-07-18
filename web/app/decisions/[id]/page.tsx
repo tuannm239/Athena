@@ -16,12 +16,18 @@ import {
   RiskLevelBadge,
 } from "@/components/ui/decision-status-badge";
 import { ReviewPanel } from "@/features/decisions/review-panel";
+import { FavoriteButton } from "@/components/ui/favorite-button";
 import { useDecision } from "@/hooks/queries";
+import { useTrackRecent } from "@/hooks/use-track-recent";
 import { formatDateTime, pct, num, signClass } from "@/lib/utils";
 
 export default function DecisionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { data: d, isLoading, isError } = useDecision(id);
+
+  useTrackRecent(
+    d ? { type: "decision", id: d.id, label: d.hypothesis, href: `/decisions/${d.id}` } : null,
+  );
 
   if (isLoading) {
     return (
@@ -64,7 +70,19 @@ export default function DecisionDetailPage({ params }: { params: Promise<{ id: s
       <PageHeader
         title={d.hypothesis}
         description={`Created ${formatDateTime(d.created_at)}`}
-        actions={<DecisionStatusBadge status={d.status} />}
+        actions={
+          <>
+            <FavoriteButton
+              item={{
+                type: "decision",
+                id: d.id,
+                label: d.hypothesis,
+                href: `/decisions/${d.id}`,
+              }}
+            />
+            <DecisionStatusBadge status={d.status} />
+          </>
+        }
       />
 
       <div className="grid gap-4 lg:grid-cols-3">

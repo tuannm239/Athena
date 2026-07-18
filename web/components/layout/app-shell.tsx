@@ -1,9 +1,12 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Navbar } from "./navbar";
 import { Sidebar } from "./sidebar";
+import { CommandPalette } from "@/components/command-palette";
+import { useCommandStore } from "@/stores/command-store";
+import { useHotkeys, type Hotkey } from "@/hooks/use-hotkeys";
 import { cn } from "@/lib/utils";
 
 const NO_SHELL = ["/login"];
@@ -11,6 +14,13 @@ const NO_SHELL = ["/login"];
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const toggleCommand = useCommandStore((s) => s.toggle);
+
+  const hotkeys = useMemo<Hotkey[]>(
+    () => [{ key: "k", meta: true, allowInInput: true, handler: () => toggleCommand() }],
+    [toggleCommand],
+  );
+  useHotkeys(hotkeys);
 
   if (NO_SHELL.includes(pathname)) return <>{children}</>;
 
@@ -41,6 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="mx-auto max-w-[1600px] p-4 md:p-6">{children}</div>
         </main>
       </div>
+      <CommandPalette />
     </div>
   );
 }
