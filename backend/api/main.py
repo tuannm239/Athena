@@ -104,7 +104,29 @@ def create_app(
             "snapshots": _snapshots_status(deps.settings.duckdb_dir),
         }
         status = "ok" if all(value == "ok" for value in components.values()) else "degraded"
-        return {"status": status, "version": APP_VERSION, "components": components}
+        return {
+            "status": status,
+            "version": APP_VERSION,
+            "pilot_mode": deps.settings.pilot_mode,
+            "components": components,
+        }
+
+    @app.get("/pilot/status", tags=["ops"], summary="Pilot-mode posture")
+    async def pilot_status(request: Request) -> dict[str, Any]:
+        """Reports the pilot-mode operating posture (Phase 5, W6). Athena is a
+        decision-support system: it generates Decision Objects only, executes
+        no trades, integrates no broker, and requires human approval — these
+        are structural guarantees, surfaced here for operators."""
+        deps = container(request)
+        return {
+            "pilot_mode": deps.settings.pilot_mode,
+            "environment": deps.settings.environment,
+            "read_only_market_access": True,
+            "order_execution": False,
+            "broker_integration": False,
+            "human_approval_required": True,
+            "audit_trail": True,
+        }
 
     @app.get("/metrics", tags=["ops"], summary="Prometheus metrics", include_in_schema=False)
     async def metrics_endpoint() -> Response:

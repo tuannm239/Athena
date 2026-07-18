@@ -32,6 +32,12 @@ class Settings:
     environment: str = "development"
     rate_limit_per_minute: int = 240
     auth_rate_limit_per_minute: int = 20
+    # Pilot mode (Phase 5, W6): an operational assertion that the platform is
+    # running as a decision-support system only — read-only w.r.t. markets, no
+    # order execution, no broker integration, human approval mandatory. Athena
+    # has no execution path by construction (Phase 3 Shadow Mode); this flag
+    # surfaces the posture to operators and gates the daily pilot report.
+    pilot_mode: bool = False
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -47,6 +53,7 @@ class Settings:
             environment=os.environ.get("ATHENA_ENV", "development"),
             rate_limit_per_minute=int(os.environ.get("RATE_LIMIT_PER_MINUTE", "240")),
             auth_rate_limit_per_minute=int(os.environ.get("AUTH_RATE_LIMIT_PER_MINUTE", "20")),
+            pilot_mode=os.environ.get("ATHENA_PILOT_MODE", "false").lower() in ("1", "true", "yes"),
         )
 
     def ensure_safe_for_environment(self) -> None:
