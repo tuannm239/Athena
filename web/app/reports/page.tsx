@@ -1,16 +1,26 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, FileText } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ExportMenu } from "@/components/export-menu";
 import { useDecisions, usePortfolios } from "@/hooks/queries";
+import { vnMarketService } from "@/services/vn-market";
 import { decisionColumns, positionColumns } from "@/lib/report-columns";
 import type { Column } from "@/lib/export";
 import type { DecisionResponse, PositionOut } from "@/types/api";
+import type { MoverQuote } from "@/lib/vn";
 import { pct } from "@/lib/utils";
+
+const moverColumns: Column<MoverQuote>[] = [
+  { header: "Ticker", accessor: (m) => m.ticker },
+  { header: "Price", accessor: (m) => m.price },
+  { header: "Change %", accessor: (m) => (m.change_pct * 100).toFixed(2) },
+  { header: "Volume", accessor: (m) => m.volume },
+];
 
 const riskColumns: Column<DecisionResponse>[] = [
   { header: "Decision", accessor: (d) => d.hypothesis },
@@ -37,14 +47,16 @@ interface ReportDef {
 }
 
 const REPORTS: ReportDef[] = [
+  { kind: "vn-daily-market", title: "Daily Market Report (VN)", description: "Vietnam indices and top movers by volume, gain and loss." },
   { kind: "decision", title: "Decision Report", description: "All tracked decisions with probability, utility and risk." },
   { kind: "portfolio", title: "Portfolio Report", description: "Holdings and unrealized P&L across portfolios." },
   { kind: "risk", title: "Risk Report", description: "Risk assessments (VaR, CVaR, drawdown) per decision." },
   { kind: "backtest", title: "Backtest Report", description: "Historical strategy performance." },
   { kind: "scenario", title: "Scenario Report", description: "Scenario-simulation outcomes." },
   { kind: "daily", title: "Daily Report", description: "Decisions created in the last 24 hours.", time: true },
-  { kind: "weekly", title: "Weekly Report", description: "Decisions created in the last 7 days.", time: true },
-  { kind: "monthly", title: "Monthly Report", description: "Decisions created in the last 30 days.", time: true },
+  { kind: "weekly", title: "Weekly Portfolio Review", description: "Decisions created in the last 7 days.", time: true },
+  { kind: "monthly", title: "Monthly Decision Review", description: "Decisions created in the last 30 days.", time: true },
+  { kind: "quarterly", title: "Quarterly Company Review", description: "Decisions created in the last 90 days.", time: true },
 ];
 
 function withinDays(iso: string, days: number): boolean {
@@ -55,6 +67,7 @@ function withinDays(iso: string, days: number): boolean {
 export default function ReportsPage() {
   const decisions = useDecisions({ limit: 100 });
   const portfolios = usePortfolios({ limit: 20 });
+  const vnSnap = useQuery({ queryKey: ["vn-snapshot"], queryFn: () => vnMarketService.snapshot() });
   const [highlight, setHighlight] = useState<string | null>(null);
 
   useEffect(() => {
@@ -76,9 +89,30 @@ export default function ReportsPage() {
     [portfolios.data],
   );
 
+  const snap = vnSnap.data?.data;
+  const movers: MoverQuote[] = snap
+    ? [...snap.top_gainers, ...snap.top_losers, ...snap.top_volume].filter(
+        (m, i, a) => a.findIndex((x) => x.ticker === m.ticker) === i,
+      )
+    : [];
+  const dayFor = (kind: string) =>
+    kind === "daily" ? 1 : kind === "weekly" ? 7 : kind === "quarterly" ? 90 : 30;
+
   function menuFor(def: ReportDef) {
     const stamp = new Date().toISOString().slice(0, 10);
     const meta: [string, string][] = [["Report", def.title]];
+    if (def.kind === "vn-daily-market") {
+      return (
+        <ExportMenu
+          filename={`athena-vn-daily-market-${stamp}`}
+          title="Athena — VN Daily Market"
+          columns={moverColumns}
+          rows={movers}
+          json={snap ?? {}}
+          pdf={{ orientation: "l", subtitle: "HOSE · HNX · UPCoM movers", meta }}
+        />
+      );
+    }
     if (def.kind === "decision") {
       return (
         <ExportMenu
@@ -114,7 +148,7 @@ export default function ReportsPage() {
       );
     }
     if (def.time) {
-      const days = def.kind === "daily" ? 1 : def.kind === "weekly" ? 7 : 30;
+      const days = dayFor(def.kind);
       const rows = items.filter((d) => withinDays(d.created_at, days));
       return (
         <ExportMenu
@@ -131,12 +165,12 @@ export default function ReportsPage() {
   }
 
   function countFor(def: ReportDef): number | null {
+    if (def.kind === "vn-daily-market") return movers.length;
     if (def.kind === "decision") return items.length;
     if (def.kind === "risk") return items.filter((d) => d.risk_assessment).length;
     if (def.kind === "portfolio") return positions.length;
     if (def.time) {
-      const days = def.kind === "daily" ? 1 : def.kind === "weekly" ? 7 : 30;
-      return items.filter((d) => withinDays(d.created_at, days)).length;
+      return items.filter((d) => withinDays(d.created_at, dayFor(def.kind))).length;
     }
     return null;
   }
