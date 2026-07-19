@@ -12,6 +12,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 import infrastructure.db.models  # noqa: F401  (registers all tables on Base.metadata)
+from infrastructure.config import normalize_database_url
 from infrastructure.db.base import Base
 
 config = context.config
@@ -23,8 +24,8 @@ target_metadata = Base.metadata
 
 
 def _database_url() -> str:
-    return os.environ.get(
-        "DATABASE_URL", "postgresql+psycopg://athena:athena@localhost:5432/athena"
+    return normalize_database_url(
+        os.environ.get("DATABASE_URL", "postgresql+psycopg://athena:athena@localhost:5432/athena")
     )
 
 

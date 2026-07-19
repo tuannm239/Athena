@@ -21,6 +21,23 @@ class InsecureConfigurationError(RuntimeError):
     """Production startup blocked by an unsafe setting (ADR-0019)."""
 
 
+def normalize_database_url(url: str) -> str:
+    """Force the psycopg (v3) driver, whatever Postgres URL form is supplied.
+
+    Managed providers (Neon, Render, Heroku, Supabase) hand out URLs like
+    ``postgresql://…`` or ``postgres://…``. SQLAlchemy maps the bare
+    ``postgresql://`` scheme to the legacy psycopg2 dialect, which this image
+    does not ship (we install psycopg v3). Rewriting the scheme to
+    ``postgresql+psycopg://`` makes any of those URLs work unchanged — the
+    operator never has to hand-edit the connection string. Non-Postgres URLs
+    (e.g. sqlite://) pass through untouched.
+    """
+    for prefix in ("postgresql+psycopg2://", "postgresql://", "postgres://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix) :]
+    return url
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     database_url: str
@@ -42,8 +59,10 @@ class Settings:
     @classmethod
     def from_env(cls) -> "Settings":
         return cls(
-            database_url=os.environ.get(
-                "DATABASE_URL", "postgresql+psycopg://athena:athena@localhost:5432/athena"
+            database_url=normalize_database_url(
+                os.environ.get(
+                    "DATABASE_URL", "postgresql+psycopg://athena:athena@localhost:5432/athena"
+                )
             ),
             redis_url=os.environ.get("REDIS_URL", "redis://localhost:6379/0"),
             duckdb_dir=os.environ.get("DUCKDB_DIR", "data/snapshots"),
