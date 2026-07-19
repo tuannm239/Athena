@@ -1,17 +1,9 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import {
-  ArrowLeft,
-  CheckCircle2,
-  Flag,
-  Lightbulb,
-  ShieldAlert,
-  TrendingDown,
-  TrendingUp,
-} from "lucide-react";
+import { ArrowLeft, CheckCircle2, Flag, ShieldAlert, TrendingDown, TrendingUp } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +14,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import { PinButton } from "@/components/ui/pin-button";
 import { LineChart } from "@/components/ui/line-chart";
+import { Tabs, type TabDef } from "@/components/ui/tabs";
+import { EvidenceCard } from "@/components/ui/evidence-card";
+import { RiskLevelBadge } from "@/components/ui/decision-status-badge";
 import { NotesPanel } from "@/components/notes-panel";
 import { companiesService } from "@/services/market";
 import { vnFundamentalsService } from "@/services/vn-market";
@@ -37,7 +32,21 @@ const PEERS = [
   { ticker: "NKG", pe: 9.8, roe: 0.138, quality: 69.4 },
 ];
 
-/** Explainable bull/bear points derived from the fundamentals (transparent). */
+const TABS: TabDef[] = [
+  { id: "overview", label: "Overview" },
+  { id: "financials", label: "Financial Statements" },
+  { id: "ratios", label: "Ratios" },
+  { id: "growth", label: "Growth" },
+  { id: "valuation", label: "Valuation" },
+  { id: "research", label: "Research" },
+  { id: "evidence", label: "Evidence" },
+  { id: "decision", label: "Decision" },
+  { id: "risk", label: "Risk" },
+  { id: "history", label: "History" },
+  { id: "notes", label: "Notes" },
+  { id: "peers", label: "Peers" },
+];
+
 function thesisPoints(f: VnFundamentals): { bull: string[]; bear: string[]; risks: string[] } {
   const r = f.ratios;
   const bull: string[] = [];
@@ -45,7 +54,8 @@ function thesisPoints(f: VnFundamentals): { bull: string[]; bear: string[]; risk
   const risks: string[] = [];
   if (r.roe !== null && r.roe >= 0.18) bull.push(`Strong ROE ${ratioPct(r.roe)}`);
   else if (r.roe !== null && r.roe < 0.05) bear.push(`Weak ROE ${ratioPct(r.roe)}`);
-  if (r.net_margin !== null && r.net_margin >= 0.15) bull.push(`High net margin ${ratioPct(r.net_margin)}`);
+  if (r.net_margin !== null && r.net_margin >= 0.15)
+    bull.push(`High net margin ${ratioPct(r.net_margin)}`);
   if (r.free_cash_flow !== null && r.free_cash_flow > 0) bull.push("Positive free cash flow");
   else if (r.free_cash_flow !== null) bear.push("Negative free cash flow");
   if (r.pe !== null && r.pe <= 10) bull.push(`Attractive P/E ${r.pe.toFixed(1)}`);
@@ -62,23 +72,11 @@ function thesisPoints(f: VnFundamentals): { bull: string[]; bear: string[]; risk
   return { bull, bear, risks };
 }
 
-function List({
-  title,
-  icon: Icon,
-  items,
-  tone,
-}: {
-  title: string;
-  icon: typeof Lightbulb;
-  items: string[];
-  tone: string;
-}) {
+function List({ title, items, tone }: { title: string; items: string[]; tone: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className={`flex items-center gap-2 ${tone}`}>
-          <Icon className="h-4 w-4" /> {title}
-        </CardTitle>
+        <CardTitle className={tone}>{title}</CardTitle>
       </CardHeader>
       <CardContent>
         <ul className="space-y-1 text-sm">
@@ -97,21 +95,18 @@ function List({
 export default function CompanyWorkspace({ params }: { params: Promise<{ ticker: string }> }) {
   const { ticker } = use(params);
   const T = ticker.toUpperCase();
+  const [tab, setTab] = useState("overview");
   const company = useQuery({ queryKey: ["company", T], queryFn: () => companiesService.get(T) });
   const fund = useQuery({ queryKey: ["vn-fund", T], queryFn: () => vnFundamentalsService.get(T) });
-  // Decisions are not ticker-keyed in the API; surface the latest few and let
-  // the investor filter in the Decision Center. Matched heuristically by ticker
-  // appearing in the hypothesis text.
   const decisions = useDecisions({ limit: 50 });
 
   useTrackRecent({ type: "company", id: T, label: T, href: `/companies/${T}` });
 
   const c = company.data?.data;
   const f = fund.data?.data;
-  const related = (decisions.data?.items ?? []).filter((d) =>
-    d.hypothesis.toUpperCase().includes(T),
-  );
+  const related = (decisions.data?.items ?? []).filter((d) => d.hypothesis.toUpperCase().includes(T));
   const latest = related[0];
+  const evidence = related.flatMap((d) => d.evidence.map((e) => ({ e, id: d.id })));
   const points = f ? thesisPoints(f) : null;
 
   return (
@@ -134,120 +129,246 @@ export default function CompanyWorkspace({ params }: { params: Promise<{ ticker:
         }
       />
 
-      {/* Fundamentals + scores */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+      <Tabs tabs={TABS} active={tab} onChange={setTab} className="mb-4" />
+
+      {fund.isLoading || !f ? (
+        <Skeleton className="h-64 w-full" />
+      ) : tab === "overview" ? (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="lg:col-span-2">
+            <CardHeader className="flex-row items-center justify-between">
+              <CardTitle>Price (sample)</CardTitle>
+              <Badge variant="warn">sample</Badge>
+            </CardHeader>
+            <CardContent>
+              <LineChart data={samplePriceSeries(27_500, 120, T.length + 3)} tone="primary" height={180} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Quality Scores</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap items-center justify-around gap-2">
+              <Gauge value={(f.quality_score ?? 0) / 100} label="quality" tone="gain" />
+              <Gauge value={(f.valuation_score ?? 0) / 100} label="valuation" tone="primary" />
+              <Gauge value={(f.growth_score ?? 0) / 100} label="growth" tone="warn" />
+            </CardContent>
+          </Card>
+        </div>
+      ) : tab === "financials" ? (
+        <Card>
           <CardHeader>
-            <CardTitle>Fundamentals</CardTitle>
+            <CardTitle>Key figures</CardTitle>
           </CardHeader>
           <CardContent>
-            {fund.isLoading || !f ? (
-              <Skeleton className="h-40 w-full" />
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+              <Stat label="EPS" value={vnd(f.ratios.eps)} />
+              <Stat label="BVPS" value={vnd(f.ratios.bvps)} />
+              <Stat label="Free cash flow" value={vnd(f.ratios.free_cash_flow)} />
+              <Stat label="Net margin" value={ratioPct(f.ratios.net_margin)} />
+              <Stat label="Gross margin" value={ratioPct(f.ratios.gross_margin)} />
+              <Stat label="Operating margin" value={ratioPct(f.ratios.operating_margin)} />
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Full quarterly/annual statements populate from the live filing feed; key
+              statement-derived figures are shown here.
+            </p>
+          </CardContent>
+        </Card>
+      ) : tab === "ratios" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Ratios</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+              <Stat label="ROE" value={ratioPct(f.ratios.roe)} />
+              <Stat label="ROA" value={ratioPct(f.ratios.roa)} />
+              <Stat label="Gross margin" value={ratioPct(f.ratios.gross_margin)} />
+              <Stat label="Operating margin" value={ratioPct(f.ratios.operating_margin)} />
+              <Stat label="Net margin" value={ratioPct(f.ratios.net_margin)} />
+              <Stat label="D/E" value={f.ratios.debt_to_equity?.toFixed(2) ?? "—"} />
+              <Stat label="Current ratio" value={f.ratios.current_ratio?.toFixed(2) ?? "—"} />
+              <Stat label="EV/EBITDA" value={f.ratios.ev_ebitda?.toFixed(1) ?? "—"} />
+            </div>
+          </CardContent>
+        </Card>
+      ) : tab === "growth" ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardContent className="p-4">
+              <Stat
+                label="Revenue growth (YoY)"
+                value={ratioPct(f.revenue_growth_yoy)}
+                valueClassName={(f.revenue_growth_yoy ?? 0) >= 0 ? "text-gain" : "text-loss"}
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <Stat
+                label="EPS growth (YoY)"
+                value={ratioPct(f.eps_growth_yoy)}
+                valueClassName={(f.eps_growth_yoy ?? 0) >= 0 ? "text-gain" : "text-loss"}
+              />
+            </CardContent>
+          </Card>
+          <Card className="md:col-span-2">
+            <CardContent className="p-4">
+              <Gauge value={(f.growth_score ?? 0) / 100} label="growth score" tone="warn" />
+            </CardContent>
+          </Card>
+        </div>
+      ) : tab === "valuation" ? (
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardContent className="p-4">
+              <Stat label="P/E" value={f.ratios.pe?.toFixed(1) ?? "—"} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <Stat label="P/B" value={f.ratios.pb?.toFixed(2) ?? "—"} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <Stat label="EV/EBITDA" value={f.ratios.ev_ebitda?.toFixed(1) ?? "—"} />
+            </CardContent>
+          </Card>
+          <Card className="md:col-span-3">
+            <CardContent className="flex justify-center p-4">
+              <Gauge value={(f.valuation_score ?? 0) / 100} label="valuation score" tone="primary" />
+            </CardContent>
+          </Card>
+        </div>
+      ) : tab === "research" ? (
+        <div>
+          <p className="mb-3 text-sm text-muted-foreground">
+            Company research notes and documents. See the{" "}
+            <Link href="/research" className="text-primary hover:underline">
+              full Research workspace
+            </Link>{" "}
+            for the evidence corpus.
+          </p>
+          <NotesPanel ticker={T} />
+        </div>
+      ) : tab === "evidence" ? (
+        evidence.length === 0 ? (
+          <EmptyState title="No evidence linked to this ticker yet" />
+        ) : (
+          <div className="space-y-2">
+            {evidence.map(({ e, id }) => (
+              <Link key={e.id} href={`/decisions/${id}`} className="block">
+                <EvidenceCard evidence={e} />
+              </Link>
+            ))}
+          </div>
+        )
+      ) : tab === "decision" ? (
+        <div className="space-y-4">
+          {latest ? (
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-sm">{latest.hypothesis}</p>
+                <div className="mt-3 grid grid-cols-3 gap-4">
+                  <Stat label="Probability" value={pct(latest.probability)} />
+                  <Stat label="Confidence" value={pct(latest.confidence)} />
+                  <Stat label="Expected utility" value={latest.expected_utility ?? "—"} />
+                </div>
+                <Link href={`/decisions/${latest.id}`} className="mt-2 inline-block text-xs text-primary hover:underline">
+                  Open decision →
+                </Link>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="p-4 text-sm text-muted-foreground">
+                No decision linked to {T} yet. The bull/bear/risk points are derived from the
+                fundamentals to seed a thesis — create a decision in the Decision Center (human
+                approval required).
+              </CardContent>
+            </Card>
+          )}
+          {points ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <List title="Bull Case" items={points.bull} tone="text-gain" />
+              <List title="Bear Case" items={points.bear} tone="text-loss" />
+              <List title="Risks" items={points.risks} tone="text-warn" />
+              <List
+                title="Catalysts"
+                items={[
+                  f.eps_growth_yoy !== null && f.eps_growth_yoy > 0
+                    ? `Earnings momentum (${ratioPct(f.eps_growth_yoy)} EPS YoY)`
+                    : "Upcoming quarterly results",
+                  "AGM / dividend announcements",
+                  "Sector rotation & foreign flows",
+                ]}
+                tone="text-primary"
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : tab === "risk" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4" /> Risk
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {latest?.risk_assessment ? (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                <Stat label="Level" value={<RiskLevelBadge level={latest.risk_assessment.level} />} />
+                <Stat label="VaR" value={latest.risk_assessment.var} />
+                <Stat label="CVaR" value={latest.risk_assessment.cvar} />
+                <Stat label="Max drawdown" value={latest.risk_assessment.max_drawdown} />
+                <Stat label="Stress" value={latest.risk_assessment.stress_score} />
+                <Stat label="Liquidity" value={latest.risk_assessment.liquidity_score} />
+              </div>
             ) : (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-                <Stat label="ROE" value={ratioPct(f.ratios.roe)} />
-                <Stat label="ROA" value={ratioPct(f.ratios.roa)} />
-                <Stat label="Gross margin" value={ratioPct(f.ratios.gross_margin)} />
-                <Stat label="Net margin" value={ratioPct(f.ratios.net_margin)} />
-                <Stat label="D/E" value={f.ratios.debt_to_equity?.toFixed(2) ?? "—"} />
-                <Stat label="Current ratio" value={f.ratios.current_ratio?.toFixed(2) ?? "—"} />
-                <Stat label="EPS" value={vnd(f.ratios.eps)} />
-                <Stat label="BVPS" value={vnd(f.ratios.bvps)} />
-                <Stat label="P/E" value={f.ratios.pe?.toFixed(1) ?? "—"} />
-                <Stat label="P/B" value={f.ratios.pb?.toFixed(2) ?? "—"} />
-                <Stat label="EV/EBITDA" value={f.ratios.ev_ebitda?.toFixed(1) ?? "—"} />
-                <Stat label="FCF" value={vnd(f.ratios.free_cash_flow)} />
+              <div className="space-y-1 text-sm">
+                {(points?.risks ?? []).map((r, i) => (
+                  <p key={i} className="flex items-center gap-2">
+                    <TrendingDown className="h-4 w-4 text-warn" /> {r}
+                  </p>
+                ))}
               </div>
             )}
           </CardContent>
         </Card>
-
+      ) : tab === "history" ? (
         <Card>
-          <CardHeader>
-            <CardTitle>Quality Scores</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap items-center justify-around gap-2">
-            {f ? (
-              <>
-                <Gauge value={(f.quality_score ?? 0) / 100} label="quality" tone="gain" />
-                <Gauge value={(f.valuation_score ?? 0) / 100} label="valuation" tone="primary" />
-                <Gauge value={(f.growth_score ?? 0) / 100} label="growth" tone="warn" />
-              </>
+          <CardContent className="p-4">
+            {related.length === 0 ? (
+              <EmptyState
+                icon={CheckCircle2}
+                title="No decisions reference this ticker yet"
+                description="Decisions mentioning the ticker in their hypothesis appear here."
+              />
             ) : (
-              <Skeleton className="h-24 w-full" />
+              <ul className="divide-y">
+                {related.map((d) => (
+                  <li key={d.id} className="flex items-center justify-between gap-2 py-2">
+                    <Link href={`/decisions/${d.id}`} className="min-w-0 flex-1 truncate hover:underline">
+                      <span className="text-sm">{d.hypothesis}</span>
+                    </Link>
+                    <span className="text-xs tabular-nums text-muted-foreground">P {pct(d.probability)}</span>
+                    <Badge variant="muted">{d.status}</Badge>
+                  </li>
+                ))}
+              </ul>
             )}
           </CardContent>
         </Card>
-      </div>
-
-      {/* Investment thesis */}
-      <h2 className="mb-2 mt-6 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        Investment Thesis
-      </h2>
-      {latest ? (
-        <Card className="mb-4">
-          <CardContent className="p-4">
-            <p className="text-sm">{latest.hypothesis}</p>
-            <div className="mt-3 grid grid-cols-3 gap-4">
-              <Stat label="Probability" value={pct(latest.probability)} />
-              <Stat label="Confidence" value={pct(latest.confidence)} />
-              <Stat label="Expected utility" value={latest.expected_utility ?? "—"} />
-            </div>
-            <Link
-              href={`/decisions/${latest.id}`}
-              className="mt-2 inline-block text-xs text-primary hover:underline"
-            >
-              Open decision →
-            </Link>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="mb-4">
-          <CardContent className="p-4 text-sm text-muted-foreground">
-            No decision linked to {T} yet. The bull/bear/risk points below are derived directly from
-            the fundamentals to seed a thesis — create a decision in the Decision Center to record
-            probability, confidence and expected utility (human approval required).
-          </CardContent>
-        </Card>
-      )}
-
-      {points ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <List title="Bull Case" icon={TrendingUp} items={points.bull} tone="text-gain" />
-          <List title="Bear Case" icon={TrendingDown} items={points.bear} tone="text-loss" />
-          <List title="Risks" icon={ShieldAlert} items={points.risks} tone="text-warn" />
-          <List
-            title="Catalysts"
-            icon={Flag}
-            items={[
-              f && f.eps_growth_yoy !== null && f.eps_growth_yoy > 0
-                ? `Earnings momentum (${ratioPct(f!.eps_growth_yoy)} EPS YoY)`
-                : "Upcoming quarterly results",
-              "AGM / dividend announcements",
-              "Sector rotation & foreign flows",
-            ]}
-            tone="text-primary"
-          />
-        </div>
-      ) : null}
-
-      {/* Price chart + peer comparison */}
-      <div className="mt-6 grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Price (sample)</CardTitle>
-            <Badge variant="warn">sample</Badge>
-          </CardHeader>
-          <CardContent>
-            <LineChart data={samplePriceSeries(27_500, 120, T.length + 3)} tone="primary" height={180} />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Reproducible sample path until the live VN price feed is connected.
-            </p>
-          </CardContent>
-        </Card>
+      ) : tab === "notes" ? (
+        <NotesPanel ticker={T} />
+      ) : tab === "peers" ? (
         <Card>
           <CardHeader>
-            <CardTitle>Peer Comparison</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" /> Peer Comparison
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <table className="w-full text-sm">
@@ -262,7 +383,11 @@ export default function CompanyWorkspace({ params }: { params: Promise<{ ticker:
               <tbody>
                 {PEERS.map((p) => (
                   <tr key={p.ticker} className={p.ticker === T ? "font-semibold" : ""}>
-                    <td className="py-1">{p.ticker}</td>
+                    <td className="py-1">
+                      <Link href={`/companies/${p.ticker}`} className="hover:underline">
+                        {p.ticker}
+                      </Link>
+                    </td>
                     <td className="py-1 text-right tabular-nums">{p.pe.toFixed(1)}</td>
                     <td className="py-1 text-right tabular-nums">{ratioPct(p.roe)}</td>
                     <td className="py-1 text-right tabular-nums">{p.quality.toFixed(0)}</td>
@@ -272,43 +397,9 @@ export default function CompanyWorkspace({ params }: { params: Promise<{ ticker:
             </table>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Notes */}
-      <h2 className="mb-2 mt-6 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        Notes
-      </h2>
-      <NotesPanel ticker={T} />
-
-      {/* Historical decisions */}
-      <h2 className="mb-2 mt-6 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        Historical Decisions
-      </h2>
-      <Card>
-        <CardContent className="p-4">
-          {related.length === 0 ? (
-            <EmptyState
-              icon={CheckCircle2}
-              title="No decisions reference this ticker yet"
-              description="Decisions mentioning the ticker in their hypothesis appear here."
-            />
-          ) : (
-            <ul className="divide-y">
-              {related.map((d) => (
-                <li key={d.id} className="flex items-center justify-between gap-2 py-2">
-                  <Link href={`/decisions/${d.id}`} className="min-w-0 flex-1 truncate hover:underline">
-                    <span className="text-sm">{d.hypothesis}</span>
-                  </Link>
-                  <span className="text-xs tabular-nums text-muted-foreground">
-                    P {pct(d.probability)}
-                  </span>
-                  <Badge variant="muted">{d.status}</Badge>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      ) : (
+        <Flag className="hidden" />
+      )}
     </>
   );
 }

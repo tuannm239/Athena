@@ -12,6 +12,7 @@ import { useUxStore } from "@/stores/ux-store";
 export function UxEffects() {
   const density = useUxStore((s) => s.preferences.density);
   const reduceMotion = useUxStore((s) => s.preferences.reduceMotion);
+  const highContrast = useUxStore((s) => s.preferences.highContrast);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-density", density);
@@ -21,6 +22,10 @@ export function UxEffects() {
     const os = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
     document.documentElement.classList.toggle("reduce-motion", reduceMotion || os);
   }, [reduceMotion]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("high-contrast", !!highContrast);
+  }, [highContrast]);
 
   return null;
 }

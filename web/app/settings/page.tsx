@@ -1,6 +1,6 @@
 "use client";
 
-import { Moon, Sun, Star, Pin, Clock, Trash2 } from "lucide-react";
+import { Moon, Sun, Star, Pin, Clock, Trash2, Globe, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useTheme } from "@/providers/theme-provider";
 import { useUxStore, type Density } from "@/stores/ux-store";
+import { useAuthStore } from "@/stores/auth-store";
 import { NAV_SECTIONS } from "@/lib/navigation";
 
 function Toggle({
@@ -48,6 +49,7 @@ function Toggle({
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
+  const isAdmin = useAuthStore((s) => s.hasRole("ADMIN"));
   const prefs = useUxStore((s) => s.preferences);
   const setPreferences = useUxStore((s) => s.setPreferences);
   const favorites = useUxStore((s) => s.favorites);
@@ -132,6 +134,68 @@ export default function SettingsPage() {
                   </option>
                 ))}
               </select>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="h-4 w-4" /> Language &amp; Accessibility
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="mb-2 text-sm font-medium">Language</p>
+              <select
+                value={prefs.language}
+                onChange={(e) => setPreferences({ language: e.target.value as "en" | "vi" })}
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                aria-label="Language"
+              >
+                <option value="en">English</option>
+                <option value="vi">Tiếng Việt</option>
+              </select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Vietnamese localization of interface copy is rolling out; the preference is saved now.
+              </p>
+            </div>
+            <Toggle
+              label="High contrast"
+              description="Increase contrast for readability."
+              checked={prefs.highContrast}
+              onChange={(v) => setPreferences({ highContrast: v })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Keyboard navigation, visible focus rings and a skip-to-content link are always on.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4" /> Security &amp; Notifications
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              Sessions use short-lived tokens with automatic refresh; RBAC is enforced on the server.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/notifications" className="text-primary hover:underline">
+                Notifications
+              </Link>
+              {isAdmin ? (
+                <Link href="/admin" className="text-primary hover:underline">
+                  API keys &amp; administration
+                </Link>
+              ) : (
+                <span className="text-muted-foreground">API keys are managed by an administrator.</span>
+              )}
+              <Link href="/profile" className="text-primary hover:underline">
+                Profile
+              </Link>
             </div>
           </CardContent>
         </Card>

@@ -38,6 +38,8 @@ export interface SavedFilter {
 
 export type Density = "comfortable" | "compact";
 
+export type Language = "en" | "vi";
+
 export interface Preferences {
   density: Density;
   /** Landing route after login. */
@@ -46,6 +48,10 @@ export interface Preferences {
   showSampleData: boolean;
   /** Reduce non-essential motion. */
   reduceMotion: boolean;
+  /** UI language preference (interface copy). */
+  language: Language;
+  /** Higher-contrast palette for accessibility. */
+  highContrast: boolean;
 }
 
 const DEFAULT_PREFERENCES: Preferences = {
@@ -53,6 +59,8 @@ const DEFAULT_PREFERENCES: Preferences = {
   landingPage: "/",
   showSampleData: true,
   reduceMotion: false,
+  language: "en",
+  highContrast: false,
 };
 
 const MAX_RECENT = 20;
@@ -148,7 +156,14 @@ export const useUxStore = create<UxState>()(
     }),
     {
       name: "athena-ux",
-      version: 1,
+      version: 2,
+      migrate: (persisted, version) => {
+        const s = persisted as UxState;
+        if (version < 2 && s?.preferences) {
+          s.preferences = { ...DEFAULT_PREFERENCES, ...s.preferences };
+        }
+        return s;
+      },
       storage: createJSONStorage(() => {
         if (typeof window === "undefined") {
           return { getItem: () => null, setItem: () => {}, removeItem: () => {} };

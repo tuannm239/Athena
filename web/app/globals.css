@@ -85,3 +85,14 @@ body {
   transition-duration: 0.001ms !important;
   scroll-behavior: auto !important;
 }
+
+/* High-contrast preference (Athena V1). Strengthens borders and text. */
+:root.high-contrast {
+  --border: 220 13% 40%;
+  --muted-foreground: 220 9% 78%;
+}
+:root.high-contrast.light,
+:root.high-contrast[data-theme="light"] {
+  --border: 220 13% 30%;
+  --muted-foreground: 220 9% 30%;
+}
