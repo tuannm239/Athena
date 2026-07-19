@@ -111,7 +111,7 @@ function CommandPaletteInner() {
         id: c.ticker,
         label: `${c.ticker} — ${c.name}`,
         sublabel: `${c.exchange} · ${c.sector}`,
-        href: `/companies?ticker=${c.ticker}`,
+        href: `/companies/${c.ticker}`,
         icon: SEARCH_ICONS.company,
         group: "Companies",
       });

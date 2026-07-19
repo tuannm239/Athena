@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowDownRight, ArrowUpRight, TrendingUp } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
@@ -30,7 +31,9 @@ function MoverTable({ title, rows }: { title: string; rows: MoverQuote[] }) {
         <ul className="divide-y text-sm">
           {rows.map((m) => (
             <li key={m.ticker} className="flex items-center justify-between gap-2 py-1.5">
-              <span className="font-medium">{m.ticker}</span>
+              <Link href={`/companies/${m.ticker}`} className="font-medium hover:underline">
+                {m.ticker}
+              </Link>
               <span className="tabular-nums text-muted-foreground">
                 {m.price.toLocaleString("vi-VN")}
               </span>
