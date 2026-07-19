@@ -29,7 +29,8 @@ const FILTERS: (DecisionStatus | "ALL")[] = [
 export default function DecisionsPage() {
   const [status, setStatus] = useState<DecisionStatus | "ALL">("ALL");
   const [page, setPage] = useState(0);
-  const savedFilters = useUxStore((s) => s.savedFilters["/decisions"] ?? []);
+  const savedFiltersMap = useUxStore((s) => s.savedFilters);
+  const savedFilters = savedFiltersMap["/decisions"] ?? [];
   const saveFilter = useUxStore((s) => s.saveFilter);
   const removeFilter = useUxStore((s) => s.removeFilter);
   const limit = 20;

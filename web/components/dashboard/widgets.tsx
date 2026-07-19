@@ -152,7 +152,8 @@ export function SectorHeatmapWidget() {
 /* Watchlist (pinned / favorited companies) */
 export function WatchlistWidget() {
   const pinned = useUxStore((s) => s.pinnedCompanies);
-  const favCompanies = useUxStore((s) => s.favorites.filter((f) => f.type === "company"));
+  const favorites = useUxStore((s) => s.favorites);
+  const favCompanies = favorites.filter((f) => f.type === "company");
   const tickers = Array.from(new Set([...pinned, ...favCompanies.map((f) => f.id.toUpperCase())]));
   return (
     <Card>

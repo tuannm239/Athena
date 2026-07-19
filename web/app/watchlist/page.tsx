@@ -13,7 +13,8 @@ import { formatDate } from "@/lib/utils";
 
 export default function WatchlistPage() {
   const pinned = useUxStore((s) => s.pinnedCompanies);
-  const favorites = useUxStore((s) => s.favorites.filter((f) => f.type === "company"));
+  const allFavorites = useUxStore((s) => s.favorites);
+  const favorites = allFavorites.filter((f) => f.type === "company");
 
   // Merge pinned + favorited company tickers (unique).
   const tickers = Array.from(new Set([...pinned, ...favorites.map((f) => f.id.toUpperCase())]));

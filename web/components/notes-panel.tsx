@@ -16,10 +16,9 @@ import { useNotesStore, MAX_INLINE_BYTES, newId, type Attachment } from "@/store
 import { formatDateTime } from "@/lib/utils";
 
 export function NotesPanel({ ticker, decisionId }: { ticker?: string; decisionId?: string }) {
-  const notes = useNotesStore((s) =>
-    s.notes.filter(
-      (n) => (!ticker || n.ticker === ticker) && (!decisionId || n.decisionId === decisionId),
-    ),
+  const allNotes = useNotesStore((s) => s.notes);
+  const notes = allNotes.filter(
+    (n) => (!ticker || n.ticker === ticker) && (!decisionId || n.decisionId === decisionId),
   );
   const add = useNotesStore((s) => s.add);
   const remove = useNotesStore((s) => s.remove);

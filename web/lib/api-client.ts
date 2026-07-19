@@ -105,8 +105,9 @@ export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Pr
       }
     }
 
-    // retry transient 5xx
-    if (res.status >= 500 && attempt < MAX_RETRIES) {
+    // retry transient 5xx — but NOT 501 (NotImplemented is a permanent
+    // condition; retrying only delays the mock fallback / error surface).
+    if (res.status >= 500 && res.status !== 501 && attempt < MAX_RETRIES) {
       await sleep(2 ** attempt * 250);
       attempt += 1;
       continue;
