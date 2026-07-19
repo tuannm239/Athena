@@ -7,10 +7,14 @@ import {
   Briefcase,
   Building2,
   Eye,
+  FileSearch,
   FileText,
   FlaskConical,
+  Info,
   LayoutDashboard,
+  LifeBuoy,
   LineChart,
+  MessageSquare,
   Network,
   Settings,
   ShieldCheck,
@@ -46,6 +50,7 @@ export const NAV_SECTIONS: NavSection[] = [
     title: "Intelligence",
     items: [
       { href: "/research", label: "Research", icon: Sparkles },
+      { href: "/evidence", label: "Evidence Center", icon: FileSearch },
       { href: "/knowledge-graph", label: "Knowledge Graph", icon: Network },
       { href: "/feature-store", label: "Feature Store", icon: Boxes },
       { href: "/probability", label: "Probability", icon: Brain },
@@ -66,6 +71,14 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/admin", label: "Administration", icon: ShieldCheck, roles: ["ADMIN"] },
       { href: "/settings", label: "Settings", icon: Settings },
       { href: "/profile", label: "Profile", icon: Activity },
+    ],
+  },
+  {
+    title: "Support",
+    items: [
+      { href: "/help", label: "Help Center", icon: LifeBuoy },
+      { href: "/feedback", label: "Feedback", icon: MessageSquare },
+      { href: "/about", label: "About", icon: Info },
     ],
   },
 ];

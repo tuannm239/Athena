@@ -48,14 +48,15 @@ describe("primitives", () => {
     expect(screen.getByRole("button", { name: "A" })).toBeInTheDocument();
   });
 
-  it("navigation covers all 15 destinations across 4 sections", () => {
-    expect(NAV_SECTIONS).toHaveLength(4);
+  it("navigation covers the core destinations across sections", () => {
+    expect(NAV_SECTIONS).toHaveLength(5);
     const hrefs = NAV_SECTIONS.flatMap((s) => s.items.map((i) => i.href));
     expect(hrefs).toEqual(
       expect.arrayContaining([
-        "/", "/decisions", "/companies", "/portfolio", "/research",
-        "/knowledge-graph", "/feature-store", "/probability", "/backtest",
+        "/", "/decisions", "/companies", "/watchlist", "/portfolio", "/research",
+        "/evidence", "/knowledge-graph", "/feature-store", "/probability", "/backtest",
         "/scenario", "/market", "/reports", "/admin", "/settings", "/profile",
+        "/help", "/feedback", "/about",
       ]),
     );
     const admin = NAV_SECTIONS.flatMap((s) => s.items).find((i) => i.href === "/admin");

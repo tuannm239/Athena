@@ -160,6 +160,13 @@ export function NotificationBell() {
               </ul>
             )}
           </div>
+          <Link
+            href="/notifications"
+            onClick={() => setOpen(false)}
+            className="block border-t px-3 py-2 text-center text-xs text-primary hover:bg-accent"
+          >
+            See all notifications
+          </Link>
         </div>
       ) : null}
     </div>
