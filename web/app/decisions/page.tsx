@@ -12,6 +12,7 @@ import { DecisionStatusBadge } from "@/components/ui/decision-status-badge";
 import { ExportMenu } from "@/components/export-menu";
 import { useDecisions } from "@/hooks/queries";
 import { useUxStore } from "@/stores/ux-store";
+import { toast } from "@/stores/toast-store";
 import { decisionColumns } from "@/lib/report-columns";
 import { formatDate, pct } from "@/lib/utils";
 import type { DecisionStatus } from "@/types/api";
@@ -107,11 +108,11 @@ export default function DecisionsPage() {
           size="sm"
           variant="outline"
           onClick={() => {
-            const name = window.prompt("Name this filter", `Status: ${status}`);
-            if (name) saveFilter("/decisions", name, `status=${status}`);
+            saveFilter("/decisions", `Status: ${status}`, `status=${status}`);
+            toast.success(`Saved filter “Status: ${status}”`);
           }}
         >
-          <Save className="h-3.5 w-3.5" /> Save
+          <Save className="h-3.5 w-3.5" /> Save current
         </Button>
       </div>
 

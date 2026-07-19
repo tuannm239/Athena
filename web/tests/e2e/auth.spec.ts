@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 test("unauthenticated user is redirected to login", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/login/);
-  await expect(page.getByRole("button", { name: /sign in/i })).toBeVisible();
+  await expect(page.locator('button[type="submit"]')).toBeVisible();
 });
 
 test("login flow reaches the dashboard", async ({ page }) => {
@@ -40,7 +40,7 @@ test("login flow reaches the dashboard", async ({ page }) => {
   await page.goto("/login");
   await page.getByLabel("Email").fill("analyst@example.com");
   await page.getByLabel("Password").fill("s3cret-pass");
-  await page.getByRole("button", { name: /sign in/i }).click();
+  await page.locator('button[type="submit"]').click();
 
   await expect(page).toHaveURL(/\/$|\/dashboard/);
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();

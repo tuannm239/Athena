@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Bell, CheckCheck, Info, ShieldAlert, X } from "lucide-react";
 import { useNotificationStore, type Severity } from "@/stores/notification-store";
+import { confirm } from "@/stores/confirm-store";
 import { cn } from "@/lib/utils";
 
 const SEVERITY_ICON: Record<Severity, typeof Info> = {
@@ -88,7 +89,17 @@ export function NotificationBell() {
               </button>
               {items.length > 0 ? (
                 <button
-                  onClick={clearAll}
+                  onClick={async () => {
+                    if (
+                      await confirm({
+                        title: "Clear all notifications?",
+                        description: "This dismisses every notification in the list.",
+                        confirmLabel: "Clear all",
+                        destructive: true,
+                      })
+                    )
+                      clearAll();
+                  }}
                   className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
                 >
                   Clear

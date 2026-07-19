@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Download, FileJson, FileSpreadsheet, FileText, Table2 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { exportAs, type Column, type ExportFormat, type PdfOptions } from "@/lib/export";
+import { toast } from "@/stores/toast-store";
 import { cn } from "@/lib/utils";
 
 export interface ExportMenuProps<T> {
@@ -66,10 +67,10 @@ export function ExportMenu<T>({
     try {
       await exportAs(format, { filename, title, columns, rows, json, pdf });
       setOpen(false);
+      toast.success(`Exported ${filename}.${format === "xlsx" ? "xlsx" : format}`);
     } catch (err) {
-      // Keep the menu open and surface the failure inline.
       console.error("export failed", err);
-      alert(`Export failed: ${(err as Error).message}`);
+      toast.error(`Export failed: ${(err as Error).message}`);
     } finally {
       setBusy(null);
     }
