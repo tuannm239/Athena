@@ -16,7 +16,7 @@ services:
   - type: web
     name: athena-api
     runtime: docker
-    plan: starter                     # upgrade as load requires
+    plan: free                        # free tier (spins down when idle); upgrade to starter for always-on
     dockerfilePath: ./Dockerfile.production
     dockerContext: .
     healthCheckPath: /health          # liveness probe (returns {"status":"ok"})
@@ -61,9 +61,8 @@ services:
       # ---- optional data provider (never logged) ----
       - key: ALPHAVANTAGE_API_KEY
         sync: false
-    disk:
-      # DuckDB snapshots + pilot reports (ephemeral analytics; not the system
-      # of record). Small persistent disk so restarts keep the local cache.
-      name: athena-data
-      mountPath: /app/data
-      sizeGB: 1
+    # NOTE: no persistent disk — Render's free plan does not support disks.
+    # DuckDB snapshots under /app/data are ephemeral analytics (not the system
+    # of record) and are recreated as needed, so ephemeral container storage is
+    # fine. To keep the local cache across restarts, upgrade to a paid plan and
+    # add a `disk:` block here.
