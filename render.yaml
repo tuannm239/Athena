@@ -1,0 +1,69 @@
+# ATHENA — Render Blueprint (Phase 3, backend deployment).
+#
+# One Docker web service running the FastAPI backend. On every deploy the
+# entrypoint (scripts/start.sh, baked into Dockerfile.production) runs
+# `alembic upgrade head` and the idempotent seed, then execs uvicorn bound
+# to the $PORT Render injects. Render performs a rolling deploy and only
+# switches traffic once healthCheckPath returns 200, giving zero-downtime
+# releases and graceful shutdown of the old instance.
+#
+# Managed data stores (Neon Postgres, Upstash Redis) live OUTSIDE Render;
+# their connection strings are provided as environment variables (see the
+# `sync: false` secrets below — set them in the Render dashboard).
+#
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: athena-api
+    runtime: docker
+    plan: starter                     # upgrade as load requires
+    dockerfilePath: ./Dockerfile.production
+    dockerContext: .
+    healthCheckPath: /health          # liveness probe (returns {"status":"ok"})
+    autoDeploy: true                  # deploy on push to the connected branch
+    envVars:
+      # ---- runtime posture ----
+      - key: ATHENA_ENV
+        value: production
+      - key: ATHENA_PILOT_MODE
+        value: "true"
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - key: DUCKDB_DIR
+        value: /app/data/snapshots
+      # ---- secrets & connection strings (set in the Render dashboard) ----
+      # DATABASE_URL — Neon direct (non-pooled) connection, e.g.
+      #   postgresql+psycopg://USER:PASSWORD@ep-xxx.eu-central-1.aws.neon.tech/athena?sslmode=require
+      - key: DATABASE_URL
+        sync: false
+      # REDIS_URL — Upstash rediss:// TLS URL, e.g.
+      #   rediss://default:PASSWORD@xxx.upstash.io:6379
+      - key: REDIS_URL
+        sync: false
+      # JWT_SECRET — 32+ random chars (openssl rand -hex 32). Prod refuses the dev default.
+      - key: JWT_SECRET
+        sync: false
+      # Initial admin (seeded once, idempotently, on first deploy). Optional:
+      # leave unset to skip seeding and register the first user via the UI.
+      - key: ATHENA_SEED_ADMIN_EMAIL
+        sync: false
+      - key: ATHENA_SEED_ADMIN_PASSWORD
+        sync: false
+      # ---- tokens & limits (optional; sane defaults in code) ----
+      - key: ACCESS_TOKEN_TTL
+        value: "900"
+      - key: REFRESH_TOKEN_TTL
+        value: "1209600"
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "240"
+      - key: AUTH_RATE_LIMIT_PER_MINUTE
+        value: "20"
+      # ---- optional data provider (never logged) ----
+      - key: ALPHAVANTAGE_API_KEY
+        sync: false
+    disk:
+      # DuckDB snapshots + pilot reports (ephemeral analytics; not the system
+      # of record). Small persistent disk so restarts keep the local cache.
+      name: athena-data
+      mountPath: /app/data
+      sizeGB: 1

@@ -47,13 +47,17 @@ COPY --chown=athena:athena backend/ backend/
 COPY --chown=athena:athena scripts/ scripts/
 
 USER athena
+# PORT is honoured at runtime (Render injects it; compose/k8s default to 8000).
+ENV PORT=8000
 EXPOSE 8000
 
-# Liveness probe baked into the image (compose/k8s can still override).
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD python -c "import urllib.request,sys; sys.exit(0) \
-    if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status==200 else sys.exit(1)"
+# Liveness probe baked into the image (compose/k8s can still override). Reads
+# $PORT so it stays correct when the platform overrides the listen port.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
+    CMD python -c "import os,urllib.request,sys; p=os.environ.get('PORT','8000'); \
+    sys.exit(0) if urllib.request.urlopen(f'http://127.0.0.1:{p}/health', timeout=4).status==200 else sys.exit(1)"
 
-# Gunicorn-managed uvicorn workers would add a dependency; uvicorn's own
-# multi-worker mode is sufficient behind Nginx. WEB_CONCURRENCY tunes it.
-CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY:-2} --proxy-headers --forwarded-allow-ips '*'"]
+# Entrypoint runs migrations + idempotent seed, then execs uvicorn bound to
+# $PORT so SIGTERM reaches the worker for graceful shutdown (see scripts/start.sh).
+# uvicorn's own multi-worker mode (WEB_CONCURRENCY) avoids a gunicorn dependency.
+CMD ["sh", "scripts/start.sh"]

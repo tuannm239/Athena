@@ -17,7 +17,11 @@ from infrastructure.config import Settings
 
 def build_engine(settings: Settings | None = None) -> Engine:
     cfg = settings or Settings.from_env()
-    return create_engine(cfg.database_url, pool_pre_ping=True)
+    # pool_pre_ping validates a connection before use, and pool_recycle drops
+    # connections older than 5 min — both guard against a managed/serverless
+    # Postgres (e.g. Neon) silently closing idle connections. TLS (sslmode) is
+    # carried in the DATABASE_URL, so no code change is needed to require it.
+    return create_engine(cfg.database_url, pool_pre_ping=True, pool_recycle=300)
 
 
 def build_session_factory(engine: Engine) -> sessionmaker[Session]:

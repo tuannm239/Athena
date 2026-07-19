@@ -8,7 +8,15 @@ const nextConfig = {
   async rewrites() {
     // Proxy API calls to the Athena backend (SPEC-08). Configurable via env.
     const backend = process.env.ATHENA_API_URL || "http://localhost:8000";
-    return [{ source: "/api/:path*", destination: `${backend}/api/:path*` }];
+    return [
+      // Ops endpoints (/health, /health/full, /metrics, /pilot/status) live at
+      // the backend root, outside the /api/v1 envelope. The browser reaches them
+      // same-origin via /api/health/* etc., so strip the /api prefix here.
+      { source: "/api/health/:path*", destination: `${backend}/health/:path*` },
+      { source: "/api/pilot/:path*", destination: `${backend}/pilot/:path*` },
+      // Everything else is the versioned REST API (/api/v1/...).
+      { source: "/api/:path*", destination: `${backend}/api/:path*` },
+    ];
   },
 };
 export default nextConfig;

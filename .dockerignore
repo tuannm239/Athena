@@ -11,5 +11,6 @@ infrastructure
 spec
 rfc
 adr
-scripts
+# NOTE: scripts/ is intentionally NOT ignored — the backend image needs
+# scripts/start.sh (entrypoint), scripts/seed.py, and scripts/daily_report.py.
 *.md
