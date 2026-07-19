@@ -24,7 +24,10 @@ import { BarList } from "@/components/ui/bar-list";
 import { EmptyState } from "@/components/ui/empty-state";
 import { DecisionStatusBadge, RiskLevelBadge } from "@/components/ui/decision-status-badge";
 import { EvidenceCard } from "@/components/ui/evidence-card";
+import { useQuery } from "@tanstack/react-query";
 import { useHealth, useMarketContext, usePortfolios } from "@/hooks/queries";
+import { vnMarketService } from "@/services/vn-market";
+import { ratioPct } from "@/lib/vn";
 import { useUxStore } from "@/stores/ux-store";
 import {
   DECISION_STATUSES,
@@ -68,6 +71,112 @@ export function MarketOverviewWidget() {
           />
         ) : (
           <EmptyState title="Market data unavailable" />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* VN indices strip (VNINDEX / VN30 / HNX) */
+export function VnIndicesWidget() {
+  const snap = useQuery({ queryKey: ["vn-snapshot"], queryFn: () => vnMarketService.snapshot() });
+  const indices = (snap.data?.data.indices ?? []).filter((i) =>
+    ["VNINDEX", "VN30", "HNXINDEX"].includes(String(i.code)),
+  );
+  return (
+    <Card className="md:col-span-2 xl:col-span-3">
+      <CardHeader className="flex-row items-center justify-between">
+        <CardTitle>Vietnam Indices</CardTitle>
+        {snap.data?.mocked ? <Badge variant="warn">sample</Badge> : null}
+      </CardHeader>
+      <CardContent>
+        {snap.isLoading ? (
+          <Loading />
+        ) : (
+          <div className="grid grid-cols-3 gap-4">
+            {indices.map((i) => (
+              <Link key={i.code} href="/market" className="block hover:opacity-80">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">{i.code}</p>
+                <p className="text-xl font-semibold tabular-nums">
+                  {i.value.toLocaleString("vi-VN")}
+                </p>
+                <p
+                  className={`text-xs tabular-nums ${i.change_pct >= 0 ? "text-gain" : "text-loss"}`}
+                >
+                  {i.change_pct >= 0 ? "+" : ""}
+                  {(i.change_pct * 100).toFixed(2)}%
+                </p>
+              </Link>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* Sector heatmap */
+export function SectorHeatmapWidget() {
+  const snap = useQuery({ queryKey: ["vn-snapshot"], queryFn: () => vnMarketService.snapshot() });
+  const heat = snap.data?.data.sector_heatmap ?? [];
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Market Heatmap</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {snap.isLoading ? (
+          <Loading />
+        ) : (
+          <div className="grid grid-cols-2 gap-1.5">
+            {heat.slice(0, 8).map((s) => (
+              <div
+                key={s.sector}
+                className={`flex items-center justify-between rounded px-2 py-1 text-xs ${
+                  s.change_pct > 0 ? "bg-gain/15" : s.change_pct < 0 ? "bg-loss/15" : "bg-muted"
+                }`}
+              >
+                <span className="truncate">{s.sector}</span>
+                <span className={s.change_pct >= 0 ? "text-gain" : "text-loss"}>
+                  {ratioPct(s.change_pct, 1)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* Watchlist (pinned / favorited companies) */
+export function WatchlistWidget() {
+  const pinned = useUxStore((s) => s.pinnedCompanies);
+  const favCompanies = useUxStore((s) => s.favorites.filter((f) => f.type === "company"));
+  const tickers = Array.from(new Set([...pinned, ...favCompanies.map((f) => f.id.toUpperCase())]));
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between">
+        <CardTitle>Watchlist</CardTitle>
+        <Link href="/watchlist" className="text-xs text-primary hover:underline">
+          Manage
+        </Link>
+      </CardHeader>
+      <CardContent>
+        {tickers.length === 0 ? (
+          <EmptyState title="No companies followed" description="Pin companies to watch them here." />
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {tickers.slice(0, 12).map((t) => (
+              <Link
+                key={t}
+                href={`/companies/${t}`}
+                className="rounded-full border px-3 py-1 text-sm hover:bg-accent"
+              >
+                {t}
+              </Link>
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>

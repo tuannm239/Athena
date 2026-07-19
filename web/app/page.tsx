@@ -16,7 +16,10 @@ import {
   ProbabilityDistributionWidget,
   RecentActivitiesWidget,
   RiskDistributionWidget,
+  SectorHeatmapWidget,
   SystemHealthWidget,
+  VnIndicesWidget,
+  WatchlistWidget,
 } from "@/components/dashboard/widgets";
 
 export default function DashboardPage() {
@@ -38,19 +41,23 @@ export default function DashboardPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <MarketRegimeWidget />
-        <DecisionSummaryWidget {...d} />
-        <PendingReviewsWidget {...d} />
-
-        <MarketOverviewWidget />
-        <ProbabilityDistributionWidget {...d} />
-        <RiskDistributionWidget {...d} />
+        <VnIndicesWidget />
 
         <PortfolioSummaryWidget />
-        <SystemHealthWidget />
-        <RecentActivitiesWidget {...d} />
+        <PendingReviewsWidget {...d} />
+        <WatchlistWidget />
 
-        <div className="md:col-span-2 xl:col-span-3">
+        <DecisionSummaryWidget {...d} />
+        <SectorHeatmapWidget />
+        <MarketRegimeWidget />
+
+        <ProbabilityDistributionWidget {...d} />
+        <RiskDistributionWidget {...d} />
+        <SystemHealthWidget />
+
+        <MarketOverviewWidget />
+        <RecentActivitiesWidget {...d} />
+        <div className="md:col-span-2 xl:col-span-1">
           <LatestEvidenceWidget {...d} />
         </div>
       </div>

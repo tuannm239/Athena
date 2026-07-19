@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { EvidenceCard } from "@/components/ui/evidence-card";
+import { NotesPanel } from "@/components/notes-panel";
 import { useDecisions } from "@/hooks/queries";
 import { formatDate } from "@/lib/utils";
 import type { EvidenceOut } from "@/types/api";
@@ -67,9 +68,19 @@ export default function ResearchPage() {
     <>
       <PageHeader
         title="Research"
-        description="Every research note is evidence linked to a decision. Organized by company, industry, sector, macro and regulations for the Vietnamese market."
+        description="Upload reports, keep notes, and browse the evidence corpus — organized by company, industry, sector, macro and regulations for the Vietnamese market. Every note carries an audit trail and human-review flag."
       />
 
+      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        Research notes &amp; documents
+      </h2>
+      <div className="mb-6">
+        <NotesPanel />
+      </div>
+
+      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        Evidence corpus
+      </h2>
       <div className="mb-4 flex flex-wrap gap-1" role="tablist" aria-label="Research area">
         {AXES.map(({ key, icon: Icon }) => (
           <Button

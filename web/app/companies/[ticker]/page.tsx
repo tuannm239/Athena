@@ -21,12 +21,21 @@ import { Gauge } from "@/components/ui/gauge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import { PinButton } from "@/components/ui/pin-button";
+import { LineChart } from "@/components/ui/line-chart";
+import { NotesPanel } from "@/components/notes-panel";
 import { companiesService } from "@/services/market";
 import { vnFundamentalsService } from "@/services/vn-market";
 import { useDecisions } from "@/hooks/queries";
 import { useTrackRecent } from "@/hooks/use-track-recent";
+import { samplePriceSeries } from "@/lib/analysis";
 import { ratioPct, vnd, type VnFundamentals } from "@/lib/vn";
 import { pct } from "@/lib/utils";
+
+const PEERS = [
+  { ticker: "HPG", pe: 8.7, roe: 0.171, quality: 78.5 },
+  { ticker: "HSG", pe: 11.2, roe: 0.124, quality: 66.0 },
+  { ticker: "NKG", pe: 9.8, roe: 0.138, quality: 69.4 },
+];
 
 /** Explainable bull/bear points derived from the fundamentals (transparent). */
 function thesisPoints(f: VnFundamentals): { bull: string[]; bear: string[]; risks: string[] } {
@@ -221,6 +230,55 @@ export default function CompanyWorkspace({ params }: { params: Promise<{ ticker:
           />
         </div>
       ) : null}
+
+      {/* Price chart + peer comparison */}
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle>Price (sample)</CardTitle>
+            <Badge variant="warn">sample</Badge>
+          </CardHeader>
+          <CardContent>
+            <LineChart data={samplePriceSeries(27_500, 120, T.length + 3)} tone="primary" height={180} />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Reproducible sample path until the live VN price feed is connected.
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Peer Comparison</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-muted-foreground">
+                  <th className="text-left font-normal">Ticker</th>
+                  <th className="text-right font-normal">P/E</th>
+                  <th className="text-right font-normal">ROE</th>
+                  <th className="text-right font-normal">Quality</th>
+                </tr>
+              </thead>
+              <tbody>
+                {PEERS.map((p) => (
+                  <tr key={p.ticker} className={p.ticker === T ? "font-semibold" : ""}>
+                    <td className="py-1">{p.ticker}</td>
+                    <td className="py-1 text-right tabular-nums">{p.pe.toFixed(1)}</td>
+                    <td className="py-1 text-right tabular-nums">{ratioPct(p.roe)}</td>
+                    <td className="py-1 text-right tabular-nums">{p.quality.toFixed(0)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Notes */}
+      <h2 className="mb-2 mt-6 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        Notes
+      </h2>
+      <NotesPanel ticker={T} />
 
       {/* Historical decisions */}
       <h2 className="mb-2 mt-6 text-sm font-semibold uppercase tracking-wide text-muted-foreground">

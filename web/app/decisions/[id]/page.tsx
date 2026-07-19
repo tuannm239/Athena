@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/decision-status-badge";
 import { ReviewPanel } from "@/features/decisions/review-panel";
 import { FavoriteButton } from "@/components/ui/favorite-button";
+import { NotesPanel } from "@/components/notes-panel";
 import { ExportMenu } from "@/components/export-menu";
 import { evidenceColumns } from "@/lib/report-columns";
 import { useDecision } from "@/hooks/queries";
@@ -269,6 +270,12 @@ export default function DecisionDetailPage({ params }: { params: Promise<{ id: s
           </Card>
         </div>
       </div>
+
+      {/* Decision journal */}
+      <h2 className="mb-2 mt-6 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        Decision Journal
+      </h2>
+      <NotesPanel decisionId={d.id} />
     </>
   );
 }
