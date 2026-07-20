@@ -67,6 +67,24 @@ athena sync full   →   publishes the "prices" dataset   →   GET /market/vn/s
 Until a sync has published, the endpoint returns an honest **empty state** (never
 sample values).
 
+## No Shell? (Render free tier) — sync on startup
+
+The free tier has no Shell, so trigger the sync **from inside the API container**
+by environment variable (already in `render.yaml`):
+
+| Var | Value | Effect |
+|---|---|---|
+| `SYNC_ON_START` | `true` | run one market sync in the background on every boot |
+| `SYNC_ON_START_MODE` | `incremental` (or `full`) | which sync to run |
+| `SYNC_LOOKBACK_DAYS` | `10` | keep small so a fresh ephemeral disk syncs fast |
+
+On boot, `scripts/start.sh` launches the sync in the **background** (it never
+delays the port bind / health check) and it writes to the same filesystem the
+API reads. The dashboard populates a short while after the service goes live,
+and — because the free disk is ephemeral — it repopulates automatically on each
+restart/redeploy. Set the vars in the Render dashboard (or keep the defaults in
+`render.yaml`) and redeploy; no Shell required.
+
 ## ⚠️ Storage / co-location note (important)
 
 The Data Pipeline's snapshot store (`DuckDbSnapshotStore`) writes DuckDB files to

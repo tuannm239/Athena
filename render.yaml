@@ -31,6 +31,20 @@ services:
         value: "2"
       - key: DUCKDB_DIR
         value: /app/data/snapshots
+      # ---- in-container market sync (free tier — no Shell needed) ----
+      # SYNC_ON_START=true runs one market sync in the background on every boot
+      # so the dashboard shows real VN data without a Shell. On the free tier the
+      # disk is ephemeral, so it repopulates on each restart. Keep the lookback
+      # small for a fast startup sync (the snapshot only needs the latest closes).
+      - key: SYNC_ON_START
+        value: "true"
+      - key: SYNC_ON_START_MODE
+        value: incremental          # 'full' for a first, wider backfill
+      - key: SYNC_LOOKBACK_DAYS
+        value: "10"
+      # SYNC_TICKERS overrides the default "VNINDEX,VN30,HOSE,HNX,UPCOM".
+      # - key: SYNC_TICKERS
+      #   value: "VNINDEX,VN30,HOSE,HNX,UPCOM"
       # ---- secrets & connection strings (set in the Render dashboard) ----
       # DATABASE_URL — Neon direct (non-pooled) connection, e.g.
       #   postgresql+psycopg://USER:PASSWORD@ep-xxx.eu-central-1.aws.neon.tech/athena?sslmode=require
