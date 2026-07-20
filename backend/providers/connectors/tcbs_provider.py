@@ -28,7 +28,12 @@ from typing import Mapping, Protocol, Sequence
 from market.domain.vietnam import Index
 from providers.sdk.models import PriceBar
 
-TCBS_BARS_URL = "https://apipubaws.tcbs.com.vn/stock-insight/v1/stock/bars-long-term"
+# TCBS's daily-bars endpoint (candidates tried in order — the path version has
+# changed over time; v1 now 404s, so v2 is tried first with v1 as a fallback).
+_BARS_ENDPOINTS: tuple[str, ...] = (
+    "https://apipubaws.tcbs.com.vn/stock-insight/v2/stock/bars-long-term",
+    "https://apipubaws.tcbs.com.vn/stock-insight/v1/stock/bars-long-term",
+)
 DEFAULT_TIMEOUT = 15.0
 DEFAULT_ATTEMPTS = 2
 _MAX_COUNT_BACK = 400
@@ -135,19 +140,32 @@ class TcbsProvider:
         return tuple(sorted(bars, key=lambda b: b.day))
 
     def _fetch(self, symbol: str, params: Mapping[str, str]) -> Mapping[str, object] | None:
-        """Fetch with a small retry; return None on final failure (tolerant)."""
+        """Fetch with a small retry; return None on final failure (tolerant).
+
+        The endpoint path version has changed over time, so each attempt tries
+        every candidate in `_BARS_ENDPOINTS` in order (v2, then v1) and returns
+        the first response that carries a non-empty ``data`` list. A response
+        with no rows on one path (e.g. a stale v1) falls through to the next.
+        """
         for attempt in range(1, self.max_attempts + 1):
-            try:
-                return self.transport.get_json(TCBS_BARS_URL, params, self.timeout)
-            except Exception as error:  # noqa: BLE001 — tolerate per-ticker failures
-                self.logger.warning(
-                    "tcbs.fetch_failed %s (%d/%d): %s: %s",
-                    symbol,
-                    attempt,
-                    self.max_attempts,
-                    type(error).__name__,
-                    error,
-                )
+            for url in _BARS_ENDPOINTS:
+                try:
+                    payload = self.transport.get_json(url, params, self.timeout)
+                except Exception as error:  # noqa: BLE001 — tolerate per-ticker failures
+                    self.logger.warning(
+                        "tcbs.fetch_failed %s [%s] (%d/%d): %s: %s",
+                        symbol,
+                        url.rsplit("/stock-insight/", 1)[-1],
+                        attempt,
+                        self.max_attempts,
+                        type(error).__name__,
+                        error,
+                    )
+                    continue
+                rows = payload.get("data")
+                if isinstance(rows, list) and rows:
+                    return payload
+                # Reachable but empty on this path — try the next candidate.
         return None
 
 
