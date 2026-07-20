@@ -25,6 +25,20 @@ python -m alembic upgrade head
 echo "[start] Running idempotent seed…"
 python -m scripts.seed
 
+# Optional provider diagnostic (free tiers without a Shell): when
+# PROVIDER_TEST_ON_START=true, probe every supported vnstock source once and
+# print the JSON report to the logs. This is how you run `athena provider test`
+# on a plan with no Shell — set the flag, redeploy, and read the result in the
+# logs (it reveals whether this server can actually reach the VN data source).
+# Runs in the BACKGROUND so it never delays the port bind / health check.
+if [ "${PROVIDER_TEST_ON_START:-false}" = "true" ]; then
+  echo "[start] PROVIDER_TEST_ON_START=true — probing vnstock sources (see JSON below)…"
+  (
+    python -m data_pipeline.cli provider test \
+      || echo "[start] provider test reported the configured source is unreachable (see JSON above)"
+  ) &
+fi
+
 # Optional in-container market sync (free tiers without a Shell): when
 # SYNC_ON_START=true, run one sync in the BACKGROUND so it never delays the
 # port bind / health check. It writes to the same filesystem the API reads, so
