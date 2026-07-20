@@ -188,15 +188,26 @@ class MarketSyncScheduler:
                 )
             except Exception as error:  # noqa: BLE001 — orchestrator boundary
                 last_error = error
+                # Put the reason in the message itself (the JSON logger drops
+                # `extra`), so the failure is visible in the deploy logs.
                 self.logger.warning(
-                    "sync.%s.attempt_failed",
+                    "sync.%s.attempt_failed (%d/%d): %s: %s",
                     mode,
-                    extra={"attempt": attempt, "max": self.max_retries, "error": str(error)},
+                    attempt,
+                    self.max_retries,
+                    type(error).__name__,
+                    error,
                 )
                 if attempt < self.max_retries:
                     self.sleeper(self.base_delay_seconds * (2 ** (attempt - 1)))
         finished = self.clock()
-        self.logger.error("sync.%s.failed", mode, extra={"error": str(last_error)})
+        self.logger.error(
+            "sync.%s.failed after %d attempts: %s: %s",
+            mode,
+            self.max_retries,
+            type(last_error).__name__,
+            last_error,
+        )
         return SyncOutcome(
             mode=mode,
             ok=False,
