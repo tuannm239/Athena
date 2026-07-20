@@ -17,7 +17,10 @@ PORT="${PORT:-8000}"
 WEB_CONCURRENCY="${WEB_CONCURRENCY:-2}"
 
 echo "[start] Applying database migrations (alembic upgrade head)…"
-alembic upgrade head
+# Invoke via `python -m` (not the bare `alembic` console script) so it never
+# depends on the venv's scripts being on PATH — only on the venv python, which
+# runs this whole entrypoint.
+python -m alembic upgrade head
 
 echo "[start] Running idempotent seed…"
 python -m scripts.seed
