@@ -7,6 +7,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PwaRegister } from "@/components/pwa-register";
 import { Toaster } from "@/components/ui/toaster";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: { default: "Athena — Decision Intelligence", template: "%s · Athena" },
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </QueryProvider>
         </ThemeProvider>
         <PwaRegister />
+        <Analytics />
       </body>
     </html>
   );
