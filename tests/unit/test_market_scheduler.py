@@ -162,3 +162,45 @@ class TestCli:
     def test_main_status_returns_zero(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("data_pipeline.cli.build_scheduler", lambda **_kw: _scheduler())
         assert main(["sync", "status"]) == 0
+
+    def test_parser_provider_test(self) -> None:
+        args = _parser().parse_args(["provider", "test"])
+        assert args.group == "provider" and args.action == "test"
+
+    def test_provider_test_reachable_returns_zero(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys,  # type: ignore[no-untyped-def]
+    ) -> None:
+        from providers.connectors.vnstock_source import SourceProbe
+
+        def _fake_probe(source: str, **_kw: object) -> SourceProbe:
+            return SourceProbe(
+                source=source,
+                reachable=source == "vci",
+                status_code=200 if source == "vci" else 404,
+                response_ms=12.3,
+                supported_datasets=("prices",),
+                rows=5 if source == "vci" else 0,
+                detail="ok" if source == "vci" else "down",
+            )
+
+        monkeypatch.delenv("VNSTOCK_SOURCE", raising=False)  # -> default vci
+        monkeypatch.setattr("data_pipeline.cli.probe_source", _fake_probe)
+        code = main(["provider", "test"])
+        out = capsys.readouterr().out
+        assert code == 0  # configured source (vci) reachable
+        assert '"command": "provider.test"' in out
+        assert '"configured_source": "vci"' in out
+
+    def test_provider_test_unreachable_configured_returns_one(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from providers.connectors.vnstock_source import SourceProbe
+
+        def _fake_probe(source: str, **_kw: object) -> SourceProbe:
+            return SourceProbe(source, False, 500, 9.0, ("prices",), 0, "down")
+
+        monkeypatch.delenv("VNSTOCK_SOURCE", raising=False)
+        monkeypatch.setattr("data_pipeline.cli.probe_source", _fake_probe)
+        assert main(["provider", "test"]) == 1

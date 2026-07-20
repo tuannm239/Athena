@@ -107,11 +107,16 @@ class TestTolerance:
 
 
 class TestRegistry:
-    def test_vndirect_registered_and_default_is_chain(self) -> None:
+    def test_vndirect_registered_and_chain_is_opt_in(self) -> None:
         registry = build_registry()
         assert VNDIRECT in registry.names(Capability.PRICE)
-        resolved = registry.resolve(Capability.PRICE, DEFAULT_SELECTION)
-        assert isinstance(resolved, ChainedPriceProvider)
+        # The chain is registered but NOT the default (automatic failover off):
+        # the default price provider must not be a ChainedPriceProvider.
+        default = registry.resolve(Capability.PRICE, DEFAULT_SELECTION)
+        assert not isinstance(default, ChainedPriceProvider)
+        # ...but it remains available as an explicit opt-in.
+        opt_in = registry.resolve(Capability.PRICE, {Capability.PRICE.value: "vn_chain"})
+        assert isinstance(opt_in, ChainedPriceProvider)
 
 
 class _StubSource:

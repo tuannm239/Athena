@@ -112,12 +112,13 @@ class TestRegistry:
         resolved = registry.resolve(Capability.PRICE, {Capability.PRICE.value: TCBS})
         assert isinstance(resolved, TcbsProvider)
 
-    def test_default_price_provider_is_the_vn_chain(self) -> None:
-        # The default is the VNDirect+TCBS chain, not TCBS alone.
+    def test_default_price_provider_is_not_the_chain(self) -> None:
+        # Automatic failover is off by default: the default price provider is
+        # single-source vnstock, not the ChainedPriceProvider.
         assert DEFAULT_SELECTION[Capability.PRICE.value] != TCBS
         registry = build_registry()
         resolved = registry.resolve(Capability.PRICE, DEFAULT_SELECTION)
-        assert isinstance(resolved, ChainedPriceProvider)
+        assert not isinstance(resolved, ChainedPriceProvider)
 
 
 class TestPipelineStorage:

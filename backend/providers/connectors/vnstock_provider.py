@@ -46,6 +46,7 @@ from providers.connectors.resilient import (
     ResilientPriceProvider,
     ResilientSectorProvider,
 )
+from providers.connectors.vnstock_source import DEFAULT_SOURCE, resolve_source
 from providers.sdk.models import (
     CompanyProfile,
     FundamentalRecord,
@@ -60,7 +61,8 @@ from shared_kernel.exceptions import DomainError
 DEFAULT_RATE_PER_SECOND = 1.0
 DEFAULT_BURST = 5.0
 DEFAULT_CACHE_TTL = 3600.0
-DEFAULT_SOURCE = "VCI"
+# DEFAULT_SOURCE is imported from `vnstock_source` (single source of truth for
+# the source name); re-exported here for backward compatibility with callers.
 
 # Index symbols vnstock understands (requirement: VNINDEX, VN30).
 INDEX_SYMBOLS = ("VNINDEX", "VN30", "HNXINDEX", "HNX30", "UPCOMINDEX")
@@ -104,7 +106,13 @@ class RealVnstockClient:
     """
 
     def __init__(self, source: str = DEFAULT_SOURCE) -> None:
-        self._source = source
+        # Validate/normalise here too, so a directly constructed client cannot
+        # carry an unsupported source silently (no failover; fail loudly).
+        self._source = resolve_source(source)
+
+    @property
+    def source(self) -> str:
+        return self._source
 
     # -- helpers ------------------------------------------------------------
     @staticmethod
@@ -136,35 +144,43 @@ class RealVnstockClient:
         try:
             frame = self._stock(symbol).quote.history(start=start, end=end, interval=interval)
         except Exception as error:  # noqa: BLE001 — normalise every upstream failure
-            raise VnstockError(f"vnstock history failed for {symbol}: {error}") from error
+            raise VnstockError(
+                f"vnstock[{self._source}] history failed for {symbol}: {error}"
+            ) from error
         return self._records(frame)
 
     def all_symbols(self) -> list[Record]:
         try:
             frame = self._stock("VNINDEX").listing.all_symbols()
         except Exception as error:  # noqa: BLE001
-            raise VnstockError(f"vnstock all_symbols failed: {error}") from error
+            raise VnstockError(f"vnstock[{self._source}] all_symbols failed: {error}") from error
         return self._records(frame)
 
     def industries(self) -> list[Record]:
         try:
             frame = self._stock("VNINDEX").listing.symbols_by_industries()
         except Exception as error:  # noqa: BLE001
-            raise VnstockError(f"vnstock symbols_by_industries failed: {error}") from error
+            raise VnstockError(
+                f"vnstock[{self._source}] symbols_by_industries failed: {error}"
+            ) from error
         return self._records(frame)
 
     def company_overview(self, symbol: str) -> list[Record]:
         try:
             frame = self._stock(symbol).company.overview()
         except Exception as error:  # noqa: BLE001
-            raise VnstockError(f"vnstock company overview failed for {symbol}: {error}") from error
+            raise VnstockError(
+                f"vnstock[{self._source}] company overview failed for {symbol}: {error}"
+            ) from error
         return self._records(frame)
 
     def financial_ratios(self, symbol: str, period: str) -> list[Record]:
         try:
             frame = self._stock(symbol).finance.ratio(period=period, lang="en", dropna=True)
         except Exception as error:  # noqa: BLE001
-            raise VnstockError(f"vnstock finance ratio failed for {symbol}: {error}") from error
+            raise VnstockError(
+                f"vnstock[{self._source}] finance ratio failed for {symbol}: {error}"
+            ) from error
         return self._records(frame)
 
 
@@ -336,7 +352,9 @@ def _limiter() -> TokenBucketRateLimiter:
 
 
 def _client(client: VnstockClient | None) -> VnstockClient:
-    return client or RealVnstockClient(source=os.environ.get("VNSTOCK_SOURCE", DEFAULT_SOURCE))
+    # Route to the configured source (VNSTOCK_SOURCE); resolve_source validates
+    # it and raises a clear error for an unsupported value (no failover).
+    return client or RealVnstockClient(source=resolve_source(os.environ.get("VNSTOCK_SOURCE")))
 
 
 def create_vnstock_price_provider(*, client: VnstockClient | None = None) -> ResilientPriceProvider:

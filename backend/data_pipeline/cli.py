@@ -5,6 +5,8 @@ Commands:
     athena sync incremental   # only days newer than the last published watermark
     athena sync replay --start YYYY-MM-DD --end YYYY-MM-DD
     athena sync status        # health: watermark, provider health, config
+    athena provider test      # probe every supported vnstock source:
+                              #   reachable / status code / response time / datasets
 
 It builds the same persistence the API reads (SqlDatasetCatalog +
 DuckDbSnapshotStore), resolves the configured price provider from the registry
@@ -36,6 +38,12 @@ from infrastructure.db.engine import build_engine, build_session_factory
 from infrastructure.db.repositories.dataset_catalog import SqlDatasetCatalog
 from infrastructure.duckdb_store import DuckDbSnapshotStore
 from infrastructure.observability import configure_logging
+from providers.connectors.vnstock_source import (
+    SourceProbe,
+    probe_source,
+    resolve_source,
+    supported_sources,
+)
 from providers.registry_config import DEFAULT_SELECTION, build_registry
 from providers.sdk.ports import PriceProvider
 from providers.sdk.registry import Capability
@@ -77,9 +85,35 @@ def _emit(payload: dict[str, object]) -> None:
     print(json.dumps(payload, default=str))
 
 
+def run_provider_test(
+    *, sources: list[str] | None = None, symbol: str = "VCI"
+) -> list[SourceProbe]:
+    """Probe each requested source (default: every supported source)."""
+    targets = [s.strip().lower() for s in sources] if sources else list(supported_sources())
+    return [probe_source(s, symbol=symbol) for s in targets]
+
+
+def _provider_test(args: argparse.Namespace) -> int:
+    requested = args.source.split(",") if getattr(args, "source", None) else None
+    probes = run_provider_test(sources=requested, symbol=getattr(args, "symbol", None) or "VCI")
+    configured = resolve_source(os.environ.get("VNSTOCK_SOURCE"))
+    _emit(
+        {
+            "command": "provider.test",
+            "configured_source": configured,
+            "supported_sources": list(supported_sources()),
+            "results": [p.as_dict() for p in probes],
+        }
+    )
+    # Exit 0 iff the configured source is reachable (the one a sync would use).
+    configured_probe = next((p for p in probes if p.source == configured), None)
+    return 0 if configured_probe is not None and configured_probe.reachable else 1
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="athena", description="Athena operational CLI")
     groups = parser.add_subparsers(dest="group", required=True)
+
     sync = groups.add_parser("sync", help="market data synchronisation")
     actions = sync.add_subparsers(dest="action", required=True)
     for name in ("full", "incremental", "status"):
@@ -88,12 +122,22 @@ def _parser() -> argparse.ArgumentParser:
     replay.add_argument("--start", required=True, help="YYYY-MM-DD (inclusive)")
     replay.add_argument("--end", required=True, help="YYYY-MM-DD (inclusive)")
     sync.add_argument("--tickers", help="comma list override (indices/exchanges/symbols)")
+
+    provider = groups.add_parser("provider", help="data provider diagnostics")
+    provider_actions = provider.add_subparsers(dest="action", required=True)
+    test = provider_actions.add_parser("test", help="probe every supported vnstock source")
+    test.add_argument("--source", help="comma list to test (default: all supported)")
+    test.add_argument("--symbol", help="symbol to probe with (default: VCI)")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     configure_logging(logging.INFO)
     args = _parser().parse_args(argv)
+
+    if args.group == "provider":
+        return _provider_test(args)
+
     tickers = args.tickers.split(",") if getattr(args, "tickers", None) else None
     scheduler = build_scheduler(tickers=tickers)
 

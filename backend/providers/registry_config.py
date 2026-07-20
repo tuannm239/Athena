@@ -89,11 +89,14 @@ def build_registry() -> ProviderRegistry:
 
 
 # Default selection maps a capability -> provider name; overridable via config.
-# Prices default to the VN chain (VCI → VNDirect → TCBS — all token-free,
-# server-friendly, works on Render); fundamentals and sectors still use vnstock;
-# global FX to Alpha Vantage.
+# Prices default to vnstock, routed by VNSTOCK_SOURCE (single source, no
+# automatic failover — see providers/connectors/vnstock_source.py and
+# VNSTOCK_SOURCE_ROUTING.md). The direct-HTTP VN_CHAIN remains registered as an
+# explicit opt-in (set the PRICE selection to "vn_chain") but is never the
+# default, so sources are never switched silently. Fundamentals and sectors use
+# vnstock; global FX to Alpha Vantage.
 DEFAULT_SELECTION = {
-    Capability.PRICE.value: VN_CHAIN,
+    Capability.PRICE.value: VNSTOCK,
     Capability.FUNDAMENTAL.value: VNSTOCK,
     Capability.SECTOR.value: VNSTOCK,
     Capability.FX.value: ALPHAVANTAGE,
