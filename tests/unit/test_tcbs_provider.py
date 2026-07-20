@@ -19,6 +19,7 @@ from tests.unit.test_production_sync import MemoryCatalog, MemorySnapshots
 from data_pipeline.application.sync import PRICES_DATASET, ProviderSyncService
 from data_pipeline.application.use_cases import DataPipelineUseCases
 from data_pipeline.domain.dataset import DatasetStatus
+from providers.connectors.chained_price import ChainedPriceProvider
 from providers.connectors.tcbs_provider import TcbsProvider, create_tcbs_price_provider
 from providers.registry_config import DEFAULT_SELECTION, TCBS, build_registry
 from providers.sdk.registry import Capability
@@ -105,12 +106,18 @@ class TestTolerance:
 
 
 class TestRegistry:
-    def test_tcbs_is_default_price_provider(self) -> None:
-        assert DEFAULT_SELECTION[Capability.PRICE.value] == TCBS
+    def test_tcbs_is_registered_as_a_price_source(self) -> None:
         registry = build_registry()
         assert TCBS in registry.names(Capability.PRICE)
-        resolved = registry.resolve(Capability.PRICE, DEFAULT_SELECTION)
+        resolved = registry.resolve(Capability.PRICE, {Capability.PRICE.value: TCBS})
         assert isinstance(resolved, TcbsProvider)
+
+    def test_default_price_provider_is_the_vn_chain(self) -> None:
+        # The default is the VNDirect+TCBS chain, not TCBS alone.
+        assert DEFAULT_SELECTION[Capability.PRICE.value] != TCBS
+        registry = build_registry()
+        resolved = registry.resolve(Capability.PRICE, DEFAULT_SELECTION)
+        assert isinstance(resolved, ChainedPriceProvider)
 
 
 class TestPipelineStorage:

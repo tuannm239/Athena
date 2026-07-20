@@ -129,3 +129,40 @@ network. Selection is configured in `registry_config.DEFAULT_SELECTION`
 resilient, cached, stores through the Data Pipeline, and passes all deterministic
 tests. Live-network validation is a single opt-in command to run wherever
 outbound access to VN data hosts is available.
+
+---
+
+## 8. Addendum — VN price source switched to VNDirect (TCBS route retired)
+
+**Context.** In production (Render) the TCBS public endpoint
+`apipubaws.tcbs.com.vn/stock-insight/{v1,v2}/stock/bars-long-term` returned a
+clean **`404 Not Found`** for *every* ticker (indices and stocks alike) — the
+host is reachable (not geo-blocked; a 404, not a 403/timeout), but the route has
+been retired. vnstock was already unusable in-container (`$HOME`/telemetry
+writes), so a token-free HTTP source was needed.
+
+**Change.** The default VN price source is now a **resilient chain**
+(`ChainedPriceProvider`, ADR-0017): for each ticker it tries sources in order
+and returns the first non-empty result.
+
+1. **VNDirect** (`vndirect_provider.py`) — primary. Public TradingView-UDF feed
+   `dchart-api.vndirect.com.vn/dchart/history`, **no credentials**, covers
+   indices (`VNINDEX`, `VN30`, `HNXINDEX`, …) and stocks via one `symbol` param.
+2. **TCBS** (`tcbs_provider.py`) — fallback, kept for when its route returns.
+
+FireAnt was considered and rejected as primary: it requires a Bearer JWT token
+(expires / can be revoked), whereas VNDirect's dchart feed is token-free.
+
+**Registry.** `registry_config.py`: `VNDIRECT` and `VN_CHAIN` registered;
+`DEFAULT_SELECTION[PRICE] = VN_CHAIN`. Each source stays per-ticker tolerant
+(returns `()` on failure) so one bad symbol never aborts a sync; the chain also
+falls through a *raising* source to the next.
+
+**Tests.** `tests/unit/test_vndirect_provider.py` — UDF parsing (stock + index),
+window filter, `s != "ok"` guard, per-ticker tolerance, chain fallback
+(empty → next, raising → next, first-non-empty short-circuits), pipeline
+storage, and the registry default resolving to the chain. Opt-in live smoke:
+`VNDIRECT_LIVE=1`. All deterministic tests pass; ruff/format/mypy green.
+
+**No business logic modified** — changes live under `providers/` only; the Data
+Pipeline is used, not changed.
