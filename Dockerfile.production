@@ -26,9 +26,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 FROM python:3.13-slim AS runtime
 
 # Non-root runtime user (SECURITY_HARDENING: never run the app as root).
+# Give it a writable HOME (/app/data): libraries such as vnstock/vnai write
+# config/cache under $HOME, and the user has no /home/athena (--no-create-home),
+# which otherwise fails with "[Errno 13] Permission denied: '/home/athena'".
 RUN groupadd --gid 10001 athena \
     && useradd --uid 10001 --gid athena --no-create-home --shell /usr/sbin/nologin athena \
-    && mkdir -p /app/data/snapshots /app/data/pilot-reports \
+    && mkdir -p /app/data/snapshots /app/data/pilot-reports /app/data/home \
     && chown -R athena:athena /app
 
 WORKDIR /app
@@ -36,6 +39,7 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PATH="/app/.venv/bin:$PATH" \
     PYTHONPATH=/app/backend \
+    HOME=/app/data/home \
     ATHENA_ENV=production
 
 # Resolved virtualenv from the builder (no uv, no caches in the final image).
