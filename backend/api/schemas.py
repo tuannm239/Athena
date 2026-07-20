@@ -227,3 +227,55 @@ class MarketContextResponse(BaseModel):
     volatility_score: Decimal
     rotation_score: Decimal
     timestamp: datetime
+
+
+# -- Vietnam market snapshot (read model over persisted prices) ----------------
+# Numeric fields are floats (not Decimal) so the JSON carries numbers the
+# charting frontend consumes directly; this is a presentation-edge choice —
+# the read model keeps Decimal internally (constitution).
+
+
+class VnIndexQuote(BaseModel):
+    code: str
+    value: float
+    change: float
+    change_pct: float
+
+
+class VnMover(BaseModel):
+    ticker: str
+    price: float
+    change_pct: float
+    volume: float
+
+
+class VnBreadth(BaseModel):
+    advancers: int
+    decliners: int
+    unchanged: int
+
+
+class VnFlow(BaseModel):
+    buy_value: float
+    sell_value: float
+    net_value: float
+
+
+class VnSectorPerf(BaseModel):
+    sector: str
+    change_pct: float
+
+
+class VnMarketSnapshotResponse(BaseModel):
+    as_of: datetime | None
+    indices: list[VnIndexQuote]
+    breadth: VnBreadth
+    sector_heatmap: list[VnSectorPerf]
+    foreign: VnFlow
+    proprietary: VnFlow
+    liquidity_value: float
+    top_gainers: list[VnMover]
+    top_losers: list[VnMover]
+    top_volume: list[VnMover]
+    new_high: int
+    new_low: int

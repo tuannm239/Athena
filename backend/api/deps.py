@@ -10,6 +10,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session, sessionmaker
 
 from company.domain.repository import CompanyRepository
+from data_pipeline.application.use_cases import DataPipelineUseCases
 from decision_kernel.application.use_cases import DecisionUseCases
 from identity.application.ports import AuthenticationError, AuthorizationError
 from identity.application.use_cases import ApiKeyService, AuthenticateUser, RegisterUser
@@ -18,6 +19,7 @@ from infrastructure.config import Settings
 from infrastructure.db.engine import build_engine, build_session_factory
 from infrastructure.db.repositories.company import SqlCompanyRepository
 from infrastructure.db.repositories.credentials import SqlCredentialStore
+from infrastructure.db.repositories.dataset_catalog import SqlDatasetCatalog
 from infrastructure.db.repositories.decision import SqlDecisionRepository
 from infrastructure.db.repositories.portfolio import SqlPortfolioRepository
 from infrastructure.db.repositories.security_stores import (
@@ -26,8 +28,11 @@ from infrastructure.db.repositories.security_stores import (
     SqlSecurityAuditLog,
 )
 from infrastructure.db.repositories.user import SqlUserRepository
+from infrastructure.duckdb_store import DuckDbSnapshotStore
 from infrastructure.events import InProcessEventBus
+from infrastructure.market_read import PublishedMarketPriceReader
 from infrastructure.security import Argon2PasswordHasher, JwtTokenService
+from market.application.read_model import VnMarketSnapshotQuery
 from portfolio.application.use_cases import PortfolioUseCases
 
 
@@ -40,6 +45,7 @@ class Container:
     decisions: DecisionUseCases
     portfolios: PortfolioUseCases
     companies: CompanyRepository
+    market_snapshot: VnMarketSnapshotQuery
     register_user: RegisterUser
     authenticate: AuthenticateUser
     api_keys: ApiKeyService
@@ -59,12 +65,20 @@ def build_container(
     audit = SqlSecurityAuditLog(sessions)
     api_key_store = SqlApiKeyStore(sessions)
     tokens = JwtTokenService(cfg, refresh_store=SqlRefreshTokenStore(sessions))
+    # Read-only market snapshot query over the pipeline's *published* prices
+    # (composition root wiring; the query depends only on the reader port).
+    pipeline_read = DataPipelineUseCases(
+        catalog=SqlDatasetCatalog(sessions),
+        snapshots=DuckDbSnapshotStore(cfg.duckdb_dir),
+    )
+    market_snapshot = VnMarketSnapshotQuery(reader=PublishedMarketPriceReader(pipeline_read))
     return Container(
         settings=cfg,
         sessions=sessions,
         decisions=DecisionUseCases(repository=SqlDecisionRepository(sessions), events=bus),
         portfolios=PortfolioUseCases(repository=SqlPortfolioRepository(sessions), events=bus),
         companies=SqlCompanyRepository(sessions),
+        market_snapshot=market_snapshot,
         register_user=RegisterUser(users, credentials, hasher, audit=audit),
         authenticate=AuthenticateUser(
             users, credentials, hasher, tokens, audit=audit, api_keys=api_key_store

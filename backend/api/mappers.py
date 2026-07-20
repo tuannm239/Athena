@@ -10,13 +10,66 @@ from api.schemas import (
     PositionOut,
     ReviewRecordOut,
     RiskAssessmentModel,
+    VnBreadth,
+    VnFlow,
+    VnIndexQuote,
+    VnMarketSnapshotResponse,
+    VnMover,
 )
 from company.domain.company import Company
 from decision_kernel.domain.decision import Decision
 from decision_kernel.domain.evidence import Evidence
+from market.application.read_model import MarketSnapshotView, MoverView
 from portfolio.domain.portfolio import Portfolio
 from risk.domain.risk_assessment import RiskAssessment
 from shared_kernel.money import Currency
+
+_NO_FLOW = VnFlow(buy_value=0.0, sell_value=0.0, net_value=0.0)
+
+
+def _movers_out(movers: tuple[MoverView, ...]) -> list[VnMover]:
+    return [
+        VnMover(
+            ticker=m.ticker,
+            price=float(m.price),
+            change_pct=float(m.change_pct),
+            volume=float(m.volume),
+        )
+        for m in movers
+    ]
+
+
+def vn_snapshot_out(view: MarketSnapshotView) -> VnMarketSnapshotResponse:
+    """Read-model view → API response. Fields without a persisted source
+    (foreign/proprietary flows, sector heatmap, 52-week highs/lows) are
+    returned empty — an honest empty state, never sample values — because
+    the pipeline does not yet persist them."""
+    return VnMarketSnapshotResponse(
+        as_of=view.as_of,
+        indices=[
+            VnIndexQuote(
+                code=i.code,
+                value=float(i.value),
+                change=float(i.change),
+                change_pct=float(i.change_pct),
+            )
+            for i in view.indices
+        ],
+        breadth=VnBreadth(
+            advancers=view.breadth.advancers,
+            decliners=view.breadth.decliners,
+            unchanged=view.breadth.unchanged,
+        ),
+        sector_heatmap=[],
+        foreign=_NO_FLOW,
+        proprietary=_NO_FLOW,
+        liquidity_value=float(view.liquidity_value),
+        top_gainers=_movers_out(view.top_gainers),
+        top_losers=_movers_out(view.top_losers),
+        top_volume=_movers_out(view.top_volume),
+        new_high=0,
+        new_low=0,
+    )
 
 
 def evidence_out(item: Evidence) -> EvidenceOut:
