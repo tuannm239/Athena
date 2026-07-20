@@ -145,24 +145,30 @@ writes), so a token-free HTTP source was needed.
 (`ChainedPriceProvider`, ADR-0017): for each ticker it tries sources in order
 and returns the first non-empty result.
 
-1. **VNDirect** (`vndirect_provider.py`) — primary. Public TradingView-UDF feed
+1. **VCI / Vietcap** (`vci_provider.py`) — primary. Public OHLC chart feed
+   `trading.vietcap.com.vn/api/chart/OHLCChart/gap` (this is `vnstock`'s default
+   `VCI` source). **POST + JSON body** (its own transport seam), **no
+   credentials**, covers indices and stocks via `symbols`.
+2. **VNDirect** (`vndirect_provider.py`) — second. Public TradingView-UDF feed
    `dchart-api.vndirect.com.vn/dchart/history`, **no credentials**, covers
    indices (`VNINDEX`, `VN30`, `HNXINDEX`, …) and stocks via one `symbol` param.
-2. **TCBS** (`tcbs_provider.py`) — fallback, kept for when its route returns.
+3. **TCBS** (`tcbs_provider.py`) — fallback, kept for when its route returns.
 
-FireAnt was considered and rejected as primary: it requires a Bearer JWT token
-(expires / can be revoked), whereas VNDirect's dchart feed is token-free.
+FireAnt was considered and rejected: it requires a Bearer JWT token (expires /
+can be revoked), whereas all three chained feeds are token-free.
 
-**Registry.** `registry_config.py`: `VNDIRECT` and `VN_CHAIN` registered;
-`DEFAULT_SELECTION[PRICE] = VN_CHAIN`. Each source stays per-ticker tolerant
-(returns `()` on failure) so one bad symbol never aborts a sync; the chain also
-falls through a *raising* source to the next.
+**Registry.** `registry_config.py`: `VCI`, `VNDIRECT` and `VN_CHAIN` registered
+(TCBS already was); `DEFAULT_SELECTION[PRICE] = VN_CHAIN`. Each source stays
+per-ticker tolerant (returns `()` on failure) so one bad symbol never aborts a
+sync; the chain also falls through a *raising* source to the next.
 
-**Tests.** `tests/unit/test_vndirect_provider.py` — UDF parsing (stock + index),
-window filter, `s != "ok"` guard, per-ticker tolerance, chain fallback
-(empty → next, raising → next, first-non-empty short-circuits), pipeline
-storage, and the registry default resolving to the chain. Opt-in live smoke:
-`VNDIRECT_LIVE=1`. All deterministic tests pass; ruff/format/mypy green.
+**Tests.** `tests/unit/test_vci_provider.py` and
+`tests/unit/test_vndirect_provider.py` — payload parsing (stock + index), window
+filter, VCI multi-record symbol selection, VNDirect `s != "ok"` guard, per-ticker
+tolerance, chain fallback (empty → next, raising → next, first-non-empty
+short-circuits), pipeline storage, and the registry default resolving to the
+chain. Opt-in live smoke: `VCI_LIVE=1` / `VNDIRECT_LIVE=1`. All deterministic
+tests pass; ruff/format/mypy green.
 
 **No business logic modified** — changes live under `providers/` only; the Data
 Pipeline is used, not changed.

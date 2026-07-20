@@ -15,6 +15,7 @@ from providers.connectors.alphavantage import (
 from providers.connectors.chained_price import create_chained_price_provider
 from providers.connectors.static import StaticProvider
 from providers.connectors.tcbs_provider import create_tcbs_price_provider
+from providers.connectors.vci_provider import create_vci_price_provider
 from providers.connectors.vndirect_provider import create_vndirect_price_provider
 from providers.connectors.vnstock_provider import (
     create_vnstock_fundamental_provider,
@@ -28,17 +29,21 @@ STATIC = "static"
 VNSTOCK = "vnstock"
 TCBS = "tcbs"
 VNDIRECT = "vndirect"
+VCI = "vci"
 VN_CHAIN = "vn_chain"
 
 
 def _create_vn_price_chain() -> object:
-    """VN price source with fallback: VNDirect first, then TCBS.
+    """VN price source with fallback: VCI → VNDirect → TCBS.
 
-    VNDirect's public dchart feed needs no credentials and is the primary
-    source; TCBS is kept as a fallback so a single host outage doesn't stop
-    the market data flowing. Each source is per-ticker tolerant.
+    All three are public, token-free feeds; the chain returns the first source
+    with data per ticker, so a single host outage (or a retired route) doesn't
+    stop the market data flowing. VCI (Vietcap — vnstock's default source) is
+    tried first, then VNDirect's dchart feed, then TCBS. Each source is
+    per-ticker tolerant.
     """
     return create_chained_price_provider(
+        create_vci_price_provider(),
         create_vndirect_price_provider(),
         create_tcbs_price_provider(),
     )
@@ -50,14 +55,16 @@ def build_registry() -> ProviderRegistry:
     # production HTTP adapter (credentials read from env at resolve time)
     registry.register(Capability.PRICE, ALPHAVANTAGE, create_alphavantage_price_provider)
     registry.register(Capability.FX, ALPHAVANTAGE, create_alphavantage_fx_provider)
+    # VCI (Vietcap) — Vietnam market prices via the public OHLC chart feed
+    # (POST/JSON; vnstock's default source). Token-free; primary VN source.
+    registry.register(Capability.PRICE, VCI, create_vci_price_provider)
     # VNDirect — Vietnam market prices via the public dchart (TradingView UDF)
-    # feed. Token-free and server-friendly (plain httpx/JSON); the primary VN
-    # price source after TCBS retired its bars-long-term route.
+    # feed. Token-free and server-friendly (plain httpx/JSON).
     registry.register(Capability.PRICE, VNDIRECT, create_vndirect_price_provider)
     # TCBS — Vietnam market prices via a light public HTTP API (indices + stocks).
     # Server-friendly, kept as a fallback source inside the VN chain.
     registry.register(Capability.PRICE, TCBS, create_tcbs_price_provider)
-    # VN price chain — VNDirect first, TCBS fallback (resilience; ADR-0017).
+    # VN price chain — VCI → VNDirect → TCBS (resilience; ADR-0017).
     registry.register(Capability.PRICE, VN_CHAIN, _create_vn_price_chain)
     # vnstock — Vietnam market (OHLCV incl. VNINDEX/VN30, fundamentals, sectors).
     # Factories are lazy; nothing imports vnstock or hits the network until resolved.
@@ -71,7 +78,7 @@ def build_registry() -> ProviderRegistry:
 
 
 # Default selection maps a capability -> provider name; overridable via config.
-# Prices default to the VN chain (VNDirect primary + TCBS fallback — token-free,
+# Prices default to the VN chain (VCI → VNDirect → TCBS — all token-free,
 # server-friendly, works on Render); fundamentals and sectors still use vnstock;
 # global FX to Alpha Vantage.
 DEFAULT_SELECTION = {
