@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# `athena` CLI shim — works in any environment (image, cron, shell) without a
+# pip-installed console script. Runs the argparse CLI on the app's PYTHONPATH.
+exec python -m data_pipeline.cli "$@"
