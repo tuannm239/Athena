@@ -49,9 +49,15 @@ fi
 if [ "${SYNC_ON_START:-false}" = "true" ]; then
   echo "[start] SYNC_ON_START=true — launching '${SYNC_ON_START_MODE:-incremental}' market sync in background…"
   (
-    python -m data_pipeline.cli sync "${SYNC_ON_START_MODE:-incremental}" \
-      || echo "[start] background market sync failed (non-fatal; API keeps running)"
-  ) &
+    echo "===== ATHENA_SYNC BEGIN mode=${SYNC_ON_START_MODE:-incremental} ====="
+    if python -m data_pipeline.cli sync "${SYNC_ON_START_MODE:-incremental}"; then
+      echo "===== ATHENA_SYNC END ok (see the JSON line above for rows) ====="
+    else
+      echo "===== ATHENA_SYNC END FAILED (non-fatal; API keeps running) ====="
+    fi
+  ) 2>&1 &
+else
+  echo "[start] SYNC_ON_START is not 'true' — skipping boot sync (dashboard will be empty until a sync runs)."
 fi
 
 echo "[start] Launching uvicorn on 0.0.0.0:${PORT} (workers=${WEB_CONCURRENCY})…"
