@@ -4,10 +4,6 @@ version = "0.1.0"
 description = "ATHENA — Financial Decision Intelligence Platform"
 readme = "README.md"
 requires-python = ">=3.13"
-
-[project.scripts]
-# Operational CLI: `uv run athena sync full|incremental|replay|status`.
-athena = "data_pipeline.cli:main"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
@@ -25,6 +21,10 @@ dependencies = [
     "prometheus-client>=0.20",
     "vnstock>=4.0.4",
 ]
+
+[project.scripts]
+# Operational CLI: `uv run athena sync full|incremental|replay|status`.
+athena = "data_pipeline.cli:main"
 
 [dependency-groups]
 dev = [
