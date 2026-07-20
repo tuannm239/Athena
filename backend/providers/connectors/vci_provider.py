@@ -177,9 +177,16 @@ class VciProvider:
         return None
 
 
-def create_vci_price_provider(*, transport: HttpTransport | None = None) -> VciProvider:
+def create_vci_price_provider(
+    *,
+    transport: HttpTransport | None = None,
+    timeout: float = DEFAULT_TIMEOUT,
+    max_attempts: int = DEFAULT_ATTEMPTS,
+) -> VciProvider:
     """Production VCI price provider (self-tolerant; no external credentials)."""
-    return VciProvider(transport=transport or HttpxTransport())
+    return VciProvider(
+        transport=transport or HttpxTransport(), timeout=timeout, max_attempts=max_attempts
+    )
 
 
 # Convenience for callers/diagnostics.

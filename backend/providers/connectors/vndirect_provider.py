@@ -164,9 +164,16 @@ class VndirectProvider:
         return None
 
 
-def create_vndirect_price_provider(*, transport: HttpTransport | None = None) -> VndirectProvider:
+def create_vndirect_price_provider(
+    *,
+    transport: HttpTransport | None = None,
+    timeout: float = DEFAULT_TIMEOUT,
+    max_attempts: int = DEFAULT_ATTEMPTS,
+) -> VndirectProvider:
     """Production VNDirect price provider (self-tolerant; no external credentials)."""
-    return VndirectProvider(transport=transport or HttpxTransport())
+    return VndirectProvider(
+        transport=transport or HttpxTransport(), timeout=timeout, max_attempts=max_attempts
+    )
 
 
 # Convenience for callers that want the header set (e.g. diagnostics).

@@ -169,9 +169,16 @@ class TcbsProvider:
         return None
 
 
-def create_tcbs_price_provider(*, transport: HttpTransport | None = None) -> TcbsProvider:
+def create_tcbs_price_provider(
+    *,
+    transport: HttpTransport | None = None,
+    timeout: float = DEFAULT_TIMEOUT,
+    max_attempts: int = DEFAULT_ATTEMPTS,
+) -> TcbsProvider:
     """Production TCBS price provider (self-tolerant; no external credentials)."""
-    return TcbsProvider(transport=transport or HttpxTransport())
+    return TcbsProvider(
+        transport=transport or HttpxTransport(), timeout=timeout, max_attempts=max_attempts
+    )
 
 
 # Convenience for callers that want the index set.

@@ -33,19 +33,30 @@ VCI = "vci"
 VN_CHAIN = "vn_chain"
 
 
+# Fast per-source settings inside the chain: short timeout + a single attempt so
+# a host that *hangs* (e.g. a VN broker silently dropping a foreign datacenter
+# IP — seen as ReadTimeout) is abandoned quickly and the next source is tried,
+# instead of every ticker stalling for the full default timeout × retries. The
+# chain itself is the resilience layer, so per-source retries add little here.
+_CHAIN_TIMEOUT = 8.0
+_CHAIN_ATTEMPTS = 1
+
+
 def _create_vn_price_chain() -> object:
-    """VN price source with fallback: VCI → VNDirect → TCBS.
+    """VN price source with fallback: VNDirect → TCBS → VCI.
 
     All three are public, token-free feeds; the chain returns the first source
     with data per ticker, so a single host outage (or a retired route) doesn't
-    stop the market data flowing. VCI (Vietcap — vnstock's default source) is
-    tried first, then VNDirect's dchart feed, then TCBS. Each source is
-    per-ticker tolerant.
+    stop the market data flowing. Order reflects what answers a non-VN server
+    fastest: VNDirect's CDN-fronted dchart GET first, then TCBS, then VCI
+    (Vietcap's trading host — richest source, but slow/hangs from foreign IPs,
+    so it is the last resort). Each source is per-ticker tolerant and runs with
+    a short timeout so failures fall through quickly.
     """
     return create_chained_price_provider(
-        create_vci_price_provider(),
-        create_vndirect_price_provider(),
-        create_tcbs_price_provider(),
+        create_vndirect_price_provider(timeout=_CHAIN_TIMEOUT, max_attempts=_CHAIN_ATTEMPTS),
+        create_tcbs_price_provider(timeout=_CHAIN_TIMEOUT, max_attempts=_CHAIN_ATTEMPTS),
+        create_vci_price_provider(timeout=_CHAIN_TIMEOUT, max_attempts=_CHAIN_ATTEMPTS),
     )
 
 
@@ -64,7 +75,7 @@ def build_registry() -> ProviderRegistry:
     # TCBS — Vietnam market prices via a light public HTTP API (indices + stocks).
     # Server-friendly, kept as a fallback source inside the VN chain.
     registry.register(Capability.PRICE, TCBS, create_tcbs_price_provider)
-    # VN price chain — VCI → VNDirect → TCBS (resilience; ADR-0017).
+    # VN price chain — VNDirect → TCBS → VCI (resilience; ADR-0017).
     registry.register(Capability.PRICE, VN_CHAIN, _create_vn_price_chain)
     # vnstock — Vietnam market (OHLCV incl. VNINDEX/VN30, fundamentals, sectors).
     # Factories are lazy; nothing imports vnstock or hits the network until resolved.
