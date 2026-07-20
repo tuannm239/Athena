@@ -12,6 +12,7 @@ from typing import Protocol
 
 from providers.sdk.models import (
     CommodityQuote,
+    CompanyProfile,
     CorporateAction,
     EtfHolding,
     FundamentalRecord,
@@ -20,6 +21,7 @@ from providers.sdk.models import (
     NewsItem,
     PriceBar,
     SectorMapping,
+    SymbolInfo,
 )
 
 
@@ -49,6 +51,14 @@ class CalendarProvider(Protocol):
 
 class SectorProvider(Protocol):
     def classification(self, ticker: str) -> SectorMapping | None: ...
+
+
+class SymbolListProvider(Protocol):
+    def symbols(self) -> tuple[SymbolInfo, ...]: ...
+
+
+class CompanyProfileProvider(Protocol):
+    def profile(self, ticker: str) -> CompanyProfile | None: ...
 
 
 class ETFProvider(Protocol):

@@ -96,6 +96,28 @@ class CommodityQuote:
 
 
 @dataclass(frozen=True, slots=True)
+class SymbolInfo:
+    """One listed security in a symbol-list capability."""
+
+    ticker: str
+    name: str
+    exchange: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyProfile:
+    """Descriptive company profile (not a financial fact)."""
+
+    ticker: str
+    name: str
+    exchange: str = ""
+    industry: str = ""
+    sector: str = ""
+    profile: str = ""  # business description / summary
+    website: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class ProviderStatus:
     """Health snapshot (Module 2 monitoring)."""
 
