@@ -12,8 +12,8 @@ Commands:
     athena provider datasets  # vnstock dataset capability catalog (SUPPORTED/NOT_SUPPORTED)
     athena provider diagnose  # deep DNS/TCP/TLS + probe diagnostics (observability)
 
-It builds the same persistence the API reads (SqlDatasetCatalog +
-DuckDbSnapshotStore), resolves the configured price provider from the registry
+It builds the same persistence the API reads (SqlDatasetCatalog + the
+configured snapshot store — SNAPSHOT_BACKEND), resolves the price provider
 (default: vnstock, VN market), and drives `MarketSyncScheduler`. It never
 fetches data itself — every fetch goes through `ProviderSyncService`.
 
@@ -46,8 +46,8 @@ from data_pipeline.tickers import (
 from infrastructure.config import Settings
 from infrastructure.db.engine import build_engine, build_session_factory
 from infrastructure.db.repositories.dataset_catalog import SqlDatasetCatalog
-from infrastructure.duckdb_store import DuckDbSnapshotStore
 from infrastructure.observability import configure_logging
+from infrastructure.sql_snapshot_store import build_snapshot_store
 from providers.connectors.vnstock_datasets import Support, catalog_as_dicts
 from providers.connectors.vnstock_diagnostics import diagnose_hosts
 from providers.connectors.vnstock_source import (
@@ -77,7 +77,7 @@ def build_scheduler(
     sessions = build_session_factory(build_engine(cfg))
     pipeline = DataPipelineUseCases(
         catalog=SqlDatasetCatalog(sessions),
-        snapshots=DuckDbSnapshotStore(cfg.duckdb_dir),
+        snapshots=build_snapshot_store(cfg, sessions),
     )
     sync = ProviderSyncService(pipeline=pipeline, source="provider:vnstock")
     resolved = (

@@ -16,7 +16,17 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Index, Numeric, String, Text, Uuid
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Index,
+    LargeBinary,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from infrastructure.db.base import Base, PortableJSON
@@ -242,3 +252,23 @@ class RefreshTokenRow(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(_UUID, ForeignKey("users.id"), index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+
+
+class SnapshotRow(Base):
+    """Durable snapshot storage — the SQL backend for the immutable snapshot
+    store (SnapshotStore port). Each (snapshot_id, table_name) holds one polars
+    frame serialised as Parquet bytes, so published datasets survive across
+    restarts / ephemeral disks (unlike a local DuckDB file). Immutability is
+    enforced by the unique constraint + a pre-write existence check.
+    """
+
+    __tablename__ = "dataset_snapshots"
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "table_name", name="uq_dataset_snapshots_id_table"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(_UUID, primary_key=True, default=uuid.uuid4)
+    snapshot_id: Mapped[str] = mapped_column(String(128), index=True)
+    table_name: Mapped[str] = mapped_column(String(128))
+    data: Mapped[bytes] = mapped_column(LargeBinary)  # polars frame as Parquet
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

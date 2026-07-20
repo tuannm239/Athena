@@ -60,6 +60,12 @@ class Settings:
     # the adapter reads this. Validated against the installed vnstock's
     # supported sources by providers.connectors.vnstock_source.resolve_source.
     vnstock_source: str = "vci"
+    # Snapshot store backend for the Data Pipeline's immutable snapshots:
+    #   "duckdb" (default) — local DuckDB files under DUCKDB_DIR (fast, but lost
+    #            when the disk is ephemeral, e.g. a free-tier container restart);
+    #   "sql"    — Parquet bytes in the relational DB (Postgres/Neon), durable
+    #            across restarts. Set SNAPSHOT_BACKEND=sql on ephemeral hosts.
+    snapshot_backend: str = "duckdb"
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -79,6 +85,8 @@ class Settings:
             auth_rate_limit_per_minute=int(os.environ.get("AUTH_RATE_LIMIT_PER_MINUTE", "20")),
             pilot_mode=os.environ.get("ATHENA_PILOT_MODE", "false").lower() in ("1", "true", "yes"),
             vnstock_source=os.environ.get("VNSTOCK_SOURCE", "vci").strip().lower() or "vci",
+            snapshot_backend=os.environ.get("SNAPSHOT_BACKEND", "duckdb").strip().lower()
+            or "duckdb",
         )
 
     def ensure_safe_for_environment(self) -> None:

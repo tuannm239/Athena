@@ -28,10 +28,10 @@ from infrastructure.db.repositories.security_stores import (
     SqlSecurityAuditLog,
 )
 from infrastructure.db.repositories.user import SqlUserRepository
-from infrastructure.duckdb_store import DuckDbSnapshotStore
 from infrastructure.events import InProcessEventBus
 from infrastructure.market_read import PublishedMarketPriceReader
 from infrastructure.security import Argon2PasswordHasher, JwtTokenService
+from infrastructure.sql_snapshot_store import build_snapshot_store
 from market.application.read_model import VnMarketSnapshotQuery
 from portfolio.application.use_cases import PortfolioUseCases
 
@@ -69,7 +69,7 @@ def build_container(
     # (composition root wiring; the query depends only on the reader port).
     pipeline_read = DataPipelineUseCases(
         catalog=SqlDatasetCatalog(sessions),
-        snapshots=DuckDbSnapshotStore(cfg.duckdb_dir),
+        snapshots=build_snapshot_store(cfg, sessions),
     )
     market_snapshot = VnMarketSnapshotQuery(reader=PublishedMarketPriceReader(pipeline_read))
     return Container(
