@@ -59,6 +59,33 @@ EXCHANGE_TICKERS: dict[str, tuple[str, ...]] = {
 # curated constituents of the three exchanges.
 DEFAULT_SYNC_SPEC: tuple[str, ...] = ("VNINDEX", "VN30", "HOSE", "HNX", "UPCOM")
 
+# Sync scopes (see `athena sync market|universe|symbol`). These select *which*
+# tickers a run covers; they do not change how a run fetches/persists (that is
+# the unchanged ProviderSyncService + Data Pipeline).
+#   * market   — headline indices only. Fast; safe to run every 5–15 min. The
+#                dashboard's breadth / sector / snapshot are derived by the
+#                existing read model from persisted prices, so refreshing the
+#                index prices refreshes them too.
+#   * universe — the configured symbol universe (curated constituents, ~34;
+#                override with SYNC_UNIVERSE). Never "every listed company".
+MARKET_SCOPE_SPEC: tuple[str, ...] = ("VNINDEX", "VN30", "HNXINDEX", "UPCOMINDEX")
+UNIVERSE_SCOPE_SPEC: tuple[str, ...] = ("HOSE", "HNX", "UPCOM")
+
+
+def market_scope() -> tuple[str, ...]:
+    """Indices only — the fast, frequent market-refresh scope."""
+    return resolve_tickers(MARKET_SCOPE_SPEC)
+
+
+def universe_scope(spec: str | None = None) -> tuple[str, ...]:
+    """The configured symbol universe (override via SYNC_UNIVERSE), never all."""
+    return resolve_tickers(parse_spec(spec) if spec else UNIVERSE_SCOPE_SPEC)
+
+
+def symbol_scope(symbol: str) -> tuple[str, ...]:
+    """A single explicit symbol (`athena sync symbol FPT`)."""
+    return resolve_tickers((symbol,))
+
 
 def resolve_tickers(spec: Iterable[str]) -> tuple[str, ...]:
     """Expand a sync spec into a de-duplicated, ordered tuple of symbols."""

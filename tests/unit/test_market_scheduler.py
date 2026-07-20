@@ -204,3 +204,45 @@ class TestCli:
         monkeypatch.delenv("VNSTOCK_SOURCE", raising=False)
         monkeypatch.setattr("data_pipeline.cli.probe_source", _fake_probe)
         assert main(["provider", "test"]) == 1
+
+    def test_provider_datasets_returns_zero_and_lists_catalog(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys,  # type: ignore[no-untyped-def]
+    ) -> None:
+        monkeypatch.delenv("VNSTOCK_SOURCE", raising=False)
+        code = main(["provider", "datasets"])
+        out = capsys.readouterr().out
+        assert code == 0
+        assert '"command": "provider.datasets"' in out
+        assert "Historical Prices" in out
+        assert "NOT_SUPPORTED" in out  # foreign/order/side
+
+    def test_parser_sync_scopes(self) -> None:
+        assert _parser().parse_args(["sync", "market"]).action == "market"
+        assert _parser().parse_args(["sync", "universe"]).action == "universe"
+        args = _parser().parse_args(["sync", "symbol", "FPT"])
+        assert args.action == "symbol" and args.symbol == "FPT"
+
+    def test_sync_market_scope_uses_indices(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        captured: dict[str, object] = {}
+
+        def _capture(**kw: object):  # type: ignore[no-untyped-def]
+            captured.update(kw)
+            return _scheduler()
+
+        monkeypatch.setattr("data_pipeline.cli.build_scheduler", _capture)
+        assert main(["sync", "market"]) == 0
+        tickers = captured["tickers"]
+        assert "VNINDEX" in tickers and "FPT" not in tickers  # indices only
+
+    def test_sync_symbol_scope_is_single_symbol(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        captured: dict[str, object] = {}
+
+        def _capture(**kw: object):  # type: ignore[no-untyped-def]
+            captured.update(kw)
+            return _scheduler()
+
+        monkeypatch.setattr("data_pipeline.cli.build_scheduler", _capture)
+        assert main(["sync", "symbol", "FPT"]) == 0
+        assert captured["tickers"] == ["FPT"]

@@ -55,6 +55,11 @@ class Settings:
     # has no execution path by construction (Phase 3 Shadow Mode); this flag
     # surfaces the posture to operators and gates the daily pilot report.
     pilot_mode: bool = False
+    # Vietnam market data source routed into the vnstock adapter (Quote,
+    # Listing, Trading, Company, Financial). Never hardcoded at a call site —
+    # the adapter reads this. Validated against the installed vnstock's
+    # supported sources by providers.connectors.vnstock_source.resolve_source.
+    vnstock_source: str = "vci"
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -73,6 +78,7 @@ class Settings:
             rate_limit_per_minute=int(os.environ.get("RATE_LIMIT_PER_MINUTE", "240")),
             auth_rate_limit_per_minute=int(os.environ.get("AUTH_RATE_LIMIT_PER_MINUTE", "20")),
             pilot_mode=os.environ.get("ATHENA_PILOT_MODE", "false").lower() in ("1", "true", "yes"),
+            vnstock_source=os.environ.get("VNSTOCK_SOURCE", "vci").strip().lower() or "vci",
         )
 
     def ensure_safe_for_environment(self) -> None:

@@ -156,6 +156,7 @@ class SourceProbe:
     supported_datasets: tuple[str, ...]
     rows: int
     detail: str
+    category: str = "ok"  # failure classification (dns/tls/timeout/http/auth/provider)
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -163,6 +164,7 @@ class SourceProbe:
             "reachable": self.reachable,
             "status_code": self.status_code,
             "response_ms": self.response_ms,
+            "category": self.category,
             "supported_datasets": list(self.supported_datasets),
             "rows": self.rows,
             "detail": self.detail,
@@ -228,15 +230,19 @@ def probe_source(
             detail=f"{count} rows for {symbol}" if count else f"empty response for {symbol}",
         )
     except Exception as error:  # noqa: BLE001 — a probe never raises; it reports
+        from providers.connectors.vnstock_diagnostics import classify_exception
+
         elapsed = round((clock() - began) * 1000, 1)
+        category, status = classify_exception(error)
         return SourceProbe(
             source=source,
             reachable=False,
-            status_code=_status_from_error(error),
+            status_code=_status_from_error(error) or status,
             response_ms=elapsed,
             supported_datasets=datasets,
             rows=0,
             detail=f"{type(error).__name__}: {error}",
+            category=category.value,
         )
 
 
