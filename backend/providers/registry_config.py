@@ -13,6 +13,7 @@ from providers.connectors.alphavantage import (
     create_alphavantage_price_provider,
 )
 from providers.connectors.static import StaticProvider
+from providers.connectors.tcbs_provider import create_tcbs_price_provider
 from providers.connectors.vnstock_provider import (
     create_vnstock_fundamental_provider,
     create_vnstock_price_provider,
@@ -23,6 +24,7 @@ from providers.sdk.registry import Capability, ProviderRegistry
 ALPHAVANTAGE = "alphavantage"
 STATIC = "static"
 VNSTOCK = "vnstock"
+TCBS = "tcbs"
 
 
 def build_registry() -> ProviderRegistry:
@@ -31,6 +33,9 @@ def build_registry() -> ProviderRegistry:
     # production HTTP adapter (credentials read from env at resolve time)
     registry.register(Capability.PRICE, ALPHAVANTAGE, create_alphavantage_price_provider)
     registry.register(Capability.FX, ALPHAVANTAGE, create_alphavantage_fx_provider)
+    # TCBS — Vietnam market prices via a light public HTTP API (indices + stocks).
+    # Server-friendly (plain httpx/JSON, no library/telemetry/$HOME writes).
+    registry.register(Capability.PRICE, TCBS, create_tcbs_price_provider)
     # vnstock — Vietnam market (OHLCV incl. VNINDEX/VN30, fundamentals, sectors).
     # Factories are lazy; nothing imports vnstock or hits the network until resolved.
     registry.register(Capability.PRICE, VNSTOCK, create_vnstock_price_provider)
@@ -43,9 +48,10 @@ def build_registry() -> ProviderRegistry:
 
 
 # Default selection maps a capability -> provider name; overridable via config.
-# Vietnam-market capabilities default to vnstock; global equities/FX to Alpha Vantage.
+# Prices default to TCBS (light, server-friendly, works on Render); fundamentals
+# and sectors still use vnstock; global FX to Alpha Vantage.
 DEFAULT_SELECTION = {
-    Capability.PRICE.value: VNSTOCK,
+    Capability.PRICE.value: TCBS,
     Capability.FUNDAMENTAL.value: VNSTOCK,
     Capability.SECTOR.value: VNSTOCK,
     Capability.FX.value: ALPHAVANTAGE,
