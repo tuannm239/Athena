@@ -61,6 +61,23 @@ else
   echo "[start] SYNC_ON_START is not 'true' — skipping boot sync (dashboard will be empty until a sync runs)."
 fi
 
+# Optional company fundamentals sync at boot (free tiers without a Shell).
+# Runs in the BACKGROUND, only for tickers not yet synced (--only-missing) and
+# capped per run (SYNC_COMPANIES_LIMIT, default 25) so it stays within memory
+# and converges across restarts until all universe companies are populated.
+if [ "${SYNC_COMPANIES_ON_START:-false}" = "true" ]; then
+  echo "[start] SYNC_COMPANIES_ON_START=true — company profiles/fundamentals in background…"
+  (
+    echo "===== ATHENA_COMPANIES BEGIN (limit=${SYNC_COMPANIES_LIMIT:-25}) ====="
+    if python -m data_pipeline.cli sync companies --only-missing \
+        --limit "${SYNC_COMPANIES_LIMIT:-25}"; then
+      echo "===== ATHENA_COMPANIES END ok ====="
+    else
+      echo "===== ATHENA_COMPANIES END FAILED (non-fatal; API keeps running) ====="
+    fi
+  ) 2>&1 &
+fi
+
 echo "[start] Launching uvicorn on 0.0.0.0:${PORT} (workers=${WEB_CONCURRENCY})…"
 exec uvicorn api.main:app \
   --host 0.0.0.0 \

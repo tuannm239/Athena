@@ -78,9 +78,13 @@ def _market_data_status(container: Any) -> dict[str, Any]:
     """
     import os
 
+    from sqlalchemy import func, select
+
     from data_pipeline.application.sync import PRICES_DATASET
     from data_pipeline.application.use_cases import DataPipelineUseCases
     from data_pipeline.domain.dataset import DatasetStatus
+    from infrastructure.db.engine import session_scope
+    from infrastructure.db.models import CompanyFundamentalsRow
     from infrastructure.db.repositories.dataset_catalog import SqlDatasetCatalog
     from infrastructure.sql_snapshot_store import build_snapshot_store
 
@@ -107,6 +111,13 @@ def _market_data_status(container: Any) -> dict[str, Any]:
     except Exception as error:  # noqa: BLE001 — never break the health probe
         result["error"] = f"{type(error).__name__}: {error}"
     result["has_prices"] = result["price_rows"] > 0
+    try:
+        with session_scope(container.sessions) as session:
+            result["companies_synced"] = int(
+                session.scalar(select(func.count()).select_from(CompanyFundamentalsRow)) or 0
+            )
+    except Exception:  # noqa: BLE001 — best-effort progress counter
+        result["companies_synced"] = None
     return result
 
 

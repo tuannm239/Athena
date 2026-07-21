@@ -149,20 +149,28 @@ def _sync_companies(args: argparse.Namespace) -> int:
 
     cfg = Settings.from_env()
     sessions = build_session_factory(build_engine(cfg))
+    fundamentals_repo = SqlCompanyFundamentalsRepository(sessions)
     if getattr(args, "symbols", None):
         targets = [s.upper() for s in args.symbols]
     else:
         level = SyncLevel(args.level) if getattr(args, "level", None) else None
         targets = universe_symbols(level)
+    # --only-missing: skip tickers already persisted, so repeated runs converge
+    # (bounded memory on small tiers) without redoing completed work.
+    if getattr(args, "only_missing", False):
+        targets = [t for t in targets if fundamentals_repo.get(t) is None]
+    limit = getattr(args, "limit", None)
+    if limit is not None:
+        targets = targets[:limit]
     result = sync_companies(
         targets,
         provider=create_vnstock_provider(),
         companies=SqlCompanyRepository(sessions),
-        fundamentals_repo=SqlCompanyFundamentalsRepository(sessions),
+        fundamentals_repo=fundamentals_repo,
         as_of=datetime.now(timezone.utc).date(),
     )
     _emit(result.as_dict())
-    return 0 if result.profiles or result.fundamentals else 1
+    return 0 if result.profiles or result.fundamentals or not targets else 1
 
 
 def run_provider_test(
@@ -263,6 +271,14 @@ def _parser() -> argparse.ArgumentParser:
         "--level", choices=[level.value for level in SyncLevel], help="filter by sync level"
     )
     companies.add_argument("--symbols", nargs="*", help="explicit tickers (default: the universe)")
+    companies.add_argument(
+        "--only-missing",
+        action="store_true",
+        help="skip tickers already synced (converges across runs)",
+    )
+    companies.add_argument(
+        "--limit", type=int, help="cap the number of tickers this run (batching)"
+    )
     sync.add_argument("--tickers", help="comma list override (indices/exchanges/symbols)")
 
     provider = groups.add_parser("provider", help="data provider diagnostics")
