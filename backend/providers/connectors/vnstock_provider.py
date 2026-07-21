@@ -496,7 +496,9 @@ class VnstockProvider:
         ratios still persist.
         """
         upper = ticker.upper()
-        records = list(self._parse_dataset(upper, self.client.financial_ratios(upper, "year")))
+        records = list(
+            self._parse_dataset(upper, self.client.financial_ratios(upper, "year"), "ratio")
+        )
         for dataset in ("income_statement", "balance_sheet"):
             fetch = getattr(self.client, dataset, None)
             if fetch is None:
@@ -513,20 +515,25 @@ class VnstockProvider:
                     error,
                 )
                 continue
-            records.extend(self._parse_dataset(upper, rows))
+            records.extend(self._parse_dataset(upper, rows, dataset))
         return tuple(records)
 
-    def _parse_dataset(self, upper: str, rows: list[Record]) -> list[FundamentalRecord]:
+    def _parse_dataset(
+        self, upper: str, rows: list[Record], dataset: str
+    ) -> list[FundamentalRecord]:
         """Parse one vnstock financial dataset (long or wide) into records.
 
         Emits a coverage line (matched metrics + the vendor's full item_id
         vocabulary) on success, and a distinct 0-row / 0-match warning
-        otherwise, so a shell-less operator can see exactly what each dataset
-        returned and why a field is empty.
+        otherwise, each tagged with `dataset` so a shell-less operator can see
+        exactly what ratio vs income_statement vs balance_sheet returned and
+        why a field is empty.
         """
         source = getattr(self.client, "source", "?")
         if not rows:
-            _LOG.warning("vnstock[%s] dataset returned 0 rows for %s (empty frame)", source, upper)
+            _LOG.warning(
+                "vnstock[%s] %s returned 0 rows for %s (empty frame)", source, dataset, upper
+            )
             return []
         # Long form (VCI/TCBS): row = metric, column = year, identified by a
         # 'year' row. Wide form (legacy/AlphaVantage): row = period.
@@ -540,9 +547,10 @@ class VnstockProvider:
             matched = sorted({r.metric for r in records})
             ids = sorted({str(r.get("item_id") or r.get("item_en")) for r in rows})
             _LOG.info(
-                "vnstock[%s] %s long-form matched=%s years=%s item_ids=%s",
+                "vnstock[%s] %s %s long-form matched=%s years=%s item_ids=%s",
                 source,
                 upper,
+                dataset,
                 matched,
                 sorted(set(year_map.values()), reverse=True),
                 ids[:80],
@@ -552,9 +560,10 @@ class VnstockProvider:
                 {str(r.get("item_id") or r.get("item_en") or r.get("item")) for r in rows}
             )
             _LOG.warning(
-                "vnstock[%s] matched 0 metrics for %s (long form, %d rows); years=%s metric_ids=%s",
+                "vnstock[%s] %s %s matched 0 metrics (long form, %d rows); years=%s metric_ids=%s",
                 source,
                 upper,
+                dataset,
                 len(rows),
                 sorted(set(year_map.values()), reverse=True),
                 labels[:80],
@@ -562,9 +571,10 @@ class VnstockProvider:
         elif not records:
             sample = rows[0]
             _LOG.warning(
-                "vnstock[%s] matched 0 metrics for %s (wide form, %d rows); columns=%s sample=%s",
+                "vnstock[%s] %s %s matched 0 metrics (wide form, %d rows); columns=%s sample=%s",
                 source,
                 upper,
+                dataset,
                 len(rows),
                 list(sample.keys()),
                 {k: sample[k] for k in list(sample)[:20]},
