@@ -5,8 +5,10 @@ Commands:
     athena sync incremental   # only days newer than the last published watermark
     athena sync ensure        # self-heal: full backfill if no readable prices, else incremental
     athena sync market        # indices only — fast; safe every 5-15 min
-    athena sync universe      # the configured symbol universe (SYNC_UNIVERSE)
+    athena sync universe      # the configured, editable investment universe (DB)
+    athena sync universe --level REALTIME   # only that sync tier
     athena sync symbol FPT    # a single symbol
+    athena sync symbols FPT VCB HPG         # several symbols
     athena sync replay --start YYYY-MM-DD --end YYYY-MM-DD
     athena sync status        # health: watermark, provider health, config
     athena provider test      # probe every supported vnstock source
@@ -44,9 +46,11 @@ from data_pipeline.tickers import (
     symbol_scope,
     universe_scope,
 )
+from data_pipeline.universe import SyncLevel
 from infrastructure.config import Settings
 from infrastructure.db.engine import build_engine, build_session_factory
 from infrastructure.db.repositories.dataset_catalog import SqlDatasetCatalog
+from infrastructure.db.repositories.universe import SqlUniverseRepository
 from infrastructure.observability import configure_logging
 from infrastructure.sql_snapshot_store import build_snapshot_store
 from providers.connectors.vnstock_datasets import Support, catalog_as_dicts
@@ -96,6 +100,20 @@ def build_scheduler(
 def _emit(payload: dict[str, object]) -> None:
     """Machine-readable line for cron/log scraping."""
     print(json.dumps(payload, default=str))
+
+
+def universe_symbols(level: SyncLevel | None = None, settings: Settings | None = None) -> list[str]:
+    """Active universe symbols from the persistent, editable `watchlist_universe`.
+
+    Falls back to the curated static universe only if the table is empty (e.g.
+    a DB not yet seeded), so `sync universe` always has something to do.
+    """
+    cfg = settings or Settings.from_env()
+    sessions = build_session_factory(build_engine(cfg))
+    symbols = list(SqlUniverseRepository(sessions).active_symbols(level))
+    if symbols:
+        return symbols
+    return list(universe_scope(os.environ.get("SYNC_UNIVERSE")))
 
 
 def published_prices_present(settings: Settings | None = None) -> bool:
@@ -194,13 +212,21 @@ def _parser() -> argparse.ArgumentParser:
 
     sync = groups.add_parser("sync", help="market data synchronisation")
     actions = sync.add_subparsers(dest="action", required=True)
-    for name in ("full", "incremental", "status", "market", "universe", "ensure"):
+    for name in ("full", "incremental", "status", "market", "ensure"):
         actions.add_parser(name)
+    universe = actions.add_parser("universe", help="sync the configured investment universe")
+    universe.add_argument(
+        "--level", choices=[level.value for level in SyncLevel], help="filter by sync level"
+    )
     replay = actions.add_parser("replay")
     replay.add_argument("--start", required=True, help="YYYY-MM-DD (inclusive)")
     replay.add_argument("--end", required=True, help="YYYY-MM-DD (inclusive)")
     symbol = actions.add_parser("symbol", help="sync a single symbol, e.g. `sync symbol FPT`")
     symbol.add_argument("symbol", help="ticker to sync (e.g. FPT)")
+    symbols = actions.add_parser(
+        "symbols", help="sync several symbols, e.g. `sync symbols FPT VCB`"
+    )
+    symbols.add_argument("symbols", nargs="+", help="tickers to sync (e.g. FPT VCB HPG)")
     sync.add_argument("--tickers", help="comma list override (indices/exchanges/symbols)")
 
     provider = groups.add_parser("provider", help="data provider diagnostics")
@@ -238,9 +264,12 @@ def main(argv: list[str] | None = None) -> int:
     elif args.action == "market":
         tickers = list(market_scope())
     elif args.action == "universe":
-        tickers = list(universe_scope(os.environ.get("SYNC_UNIVERSE")))
+        level = SyncLevel(args.level) if getattr(args, "level", None) else None
+        tickers = universe_symbols(level)
     elif args.action == "symbol":
         tickers = list(symbol_scope(args.symbol))
+    elif args.action == "symbols":
+        tickers = list(resolve_tickers(args.symbols))
     else:
         tickers = None
     scheduler = build_scheduler(tickers=tickers)
@@ -266,7 +295,7 @@ def main(argv: list[str] | None = None) -> int:
             end = date.today()
             start = end - timedelta(days=int(os.environ.get("SYNC_LOOKBACK_DAYS", "365")))
             outcome = scheduler.replay(start, end)
-    elif args.action in ("incremental", "market", "universe", "symbol"):
+    elif args.action in ("incremental", "market", "universe", "symbol", "symbols"):
         # market/universe/symbol are incremental syncs over a scoped ticker set
         # (only data newer than the persisted watermark is fetched).
         outcome = scheduler.incremental()

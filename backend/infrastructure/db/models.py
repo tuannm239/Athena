@@ -254,6 +254,24 @@ class RefreshTokenRow(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
 
+class UniverseRow(Base):
+    """Editable investment universe (`watchlist_universe`) — the configured set
+    of symbols the sync covers. Never hardcoded in logic; the sync reads active
+    rows from here. Seeded once with the default universe (idempotent).
+    """
+
+    __tablename__ = "watchlist_universe"
+
+    id: Mapped[uuid.UUID] = mapped_column(_UUID, primary_key=True, default=uuid.uuid4)
+    symbol: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    sector: Mapped[str] = mapped_column(String(64))
+    priority: Mapped[int] = mapped_column(default=3)
+    sync_level: Mapped[str] = mapped_column(String(16), default="NORMAL", index=True)
+    is_active: Mapped[bool] = mapped_column(default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class SnapshotRow(Base):
     """Durable snapshot storage — the SQL backend for the immutable snapshot
     store (SnapshotStore port). Each (snapshot_id, table_name) holds one polars

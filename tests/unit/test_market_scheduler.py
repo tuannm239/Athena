@@ -247,6 +247,35 @@ class TestCli:
         tickers = captured["tickers"]
         assert "VNINDEX" in tickers and "FPT" not in tickers  # indices only
 
+    def test_parser_symbols_and_universe_level(self) -> None:
+        args = _parser().parse_args(["sync", "symbols", "FPT", "VCB", "HPG"])
+        assert args.action == "symbols" and args.symbols == ["FPT", "VCB", "HPG"]
+        args = _parser().parse_args(["sync", "universe", "--level", "REALTIME"])
+        assert args.action == "universe" and args.level == "REALTIME"
+
+    def test_sync_symbols_scope_is_the_given_list(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        captured: dict[str, object] = {}
+
+        def _capture(**kw: object):  # type: ignore[no-untyped-def]
+            captured.update(kw)
+            return _scheduler()
+
+        monkeypatch.setattr("data_pipeline.cli.build_scheduler", _capture)
+        assert main(["sync", "symbols", "FPT", "VCB", "HPG"]) == 0
+        assert captured["tickers"] == ["FPT", "VCB", "HPG"]
+
+    def test_sync_universe_reads_from_repo(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        captured: dict[str, object] = {}
+
+        def _capture(**kw: object):  # type: ignore[no-untyped-def]
+            captured.update(kw)
+            return _scheduler()
+
+        monkeypatch.setattr("data_pipeline.cli.build_scheduler", _capture)
+        monkeypatch.setattr("data_pipeline.cli.universe_symbols", lambda level: ["VCB", "FPT"])
+        assert main(["sync", "universe"]) == 0
+        assert captured["tickers"] == ["VCB", "FPT"]
+
     def test_sync_symbol_scope_is_single_symbol(self, monkeypatch: pytest.MonkeyPatch) -> None:
         captured: dict[str, object] = {}
 

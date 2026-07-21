@@ -32,29 +32,46 @@ if _BACKEND not in sys.path:
 
 from sqlalchemy import select  # noqa: E402
 
+from data_pipeline.universe import DEFAULT_UNIVERSE  # noqa: E402
 from infrastructure.config import Settings  # noqa: E402
 from infrastructure.db.engine import build_engine, build_session_factory  # noqa: E402
 from infrastructure.db.models import UserRow  # noqa: E402
+from infrastructure.db.repositories.universe import SqlUniverseRepository  # noqa: E402
 from infrastructure.security import Argon2PasswordHasher  # noqa: E402
 
 _ACTIVE = "active"
 _ADMIN = "ADMIN"
 
 
+def seed_universe(sessions: object) -> int:
+    """Seed the default investment universe once (idempotent). Returns rows added."""
+    repo = SqlUniverseRepository(sessions)  # type: ignore[arg-type]
+    added = repo.seed_if_empty(DEFAULT_UNIVERSE)
+    if added:
+        print(f"[seed] Seeded default investment universe: {added} symbols.")
+    else:
+        print("[seed] Investment universe already populated — nothing to do.")
+    return added
+
+
 def seed() -> int:
+    settings = Settings.from_env()
+    sessions = build_session_factory(build_engine(settings))
+
+    # The investment universe is operational config, seeded regardless of the
+    # optional admin-user vars (idempotent).
+    seed_universe(sessions)
+
     email = os.environ.get("ATHENA_SEED_ADMIN_EMAIL", "").strip().lower()
     password = os.environ.get("ATHENA_SEED_ADMIN_PASSWORD", "")
 
     if not email or not password:
-        print("[seed] ATHENA_SEED_ADMIN_EMAIL/PASSWORD not set — skipping seed.")
+        print("[seed] ATHENA_SEED_ADMIN_EMAIL/PASSWORD not set — skipping admin seed.")
         return 0
 
     if len(password) < 8:
         print("[seed] ERROR: ATHENA_SEED_ADMIN_PASSWORD must be at least 8 characters.")
         return 1
-
-    settings = Settings.from_env()
-    sessions = build_session_factory(build_engine(settings))
 
     with sessions() as session:
         existing = session.execute(
