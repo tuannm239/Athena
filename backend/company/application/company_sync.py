@@ -29,7 +29,7 @@ _LOG = logging.getLogger("athena.company.sync")
 # Bumped whenever the payload gains fields from a new data source, so a
 # `--only-missing` re-run refreshes rows written by an older sync (e.g. the
 # ratio-only v1 rows, before income-statement/balance-sheet EPS/BVPS/revenue).
-FUNDAMENTALS_SCHEMA_VERSION = 2
+FUNDAMENTALS_SCHEMA_VERSION = 3
 
 
 class CompanyDataProvider(Protocol):
