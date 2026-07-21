@@ -1,7 +1,9 @@
 # RFC-0018 --- Probability Engine
 
 **Status:** Draft\
-**Version:** 1.0
+**Version:** 1.1
+
+------------------------------------------------------------------------
 
 # 1. Purpose
 
@@ -15,11 +17,11 @@ It estimates the probability that an investment hypothesis is valid.
 
 # 2. Principles
 
--   Deterministic
--   Explainable
--   Reproducible
--   Versioned
--   Testable
+- Deterministic
+- Explainable
+- Reproducible
+- Versioned
+- Testable
 
 ------------------------------------------------------------------------
 
@@ -38,40 +40,56 @@ next 24 months.
 
 Evidence objects include:
 
--   Source
--   Category
--   Timestamp
--   Reliability
--   Direction (support / contradict)
+- Source
+- Category
+- Timestamp
+- Reliability
+- Direction (support / contradict)
 
 ## Market Context
 
--   Market regime
--   Liquidity
--   Volatility
--   Sector strength
+- Market regime
+- Liquidity
+- Volatility
+- Sector strength
+
+## Feature Inputs
+
+The Probability Engine consumes versioned features from the Feature Store.
+
+Each feature must reference:
+
+- feature_id
+- feature_version
+- feature_value
+
+Probability Engine must never compute raw indicators directly.
+
+All features must originate from RFC-0023 Feature Store.
 
 ------------------------------------------------------------------------
 
 # 4. Processing Pipeline
 
-``` text
+```text
+Feature Store
+      ↓
 Hypothesis
-    ↓
+      ↓
 Prior Probability
-    ↓
+      ↓
 Evidence Validation
-    ↓
+      ↓
 Evidence Weighting
-    ↓
+      ↓
 Likelihood Estimation
-    ↓
+      ↓
 Bayesian Update
-    ↓
+      ↓
 Posterior Probability
-    ↓
+      ↓
 Confidence Calibration
-    ↓
+      ↓
 Expected Utility
 ```
 
@@ -95,10 +113,10 @@ Represents the strength of evidence.
 
 Each evidence item has:
 
--   reliability
--   relevance
--   direction
--   freshness
+- reliability
+- relevance
+- direction
+- freshness
 
 ------------------------------------------------------------------------
 
@@ -108,7 +126,7 @@ Posterior is calculated after Bayesian updating.
 
 Posterior must always remain within:
 
-\[0.0, 1.0\]
+[0.0, 1.0]
 
 ------------------------------------------------------------------------
 
@@ -118,10 +136,10 @@ Confidence measures the quality of available evidence.
 
 Influenced by:
 
--   number of evidence items
--   source reliability
--   evidence consistency
--   historical calibration
+- number of evidence items
+- source reliability
+- evidence consistency
+- historical calibration
 
 Confidence is NOT probability.
 
@@ -131,10 +149,10 @@ Confidence is NOT probability.
 
 Utility combines:
 
--   posterior probability
--   downside risk
--   expected return
--   portfolio impact
+- posterior probability
+- downside risk
+- expected return
+- portfolio impact
 
 Utility is the optimization target for the Portfolio Engine.
 
@@ -144,23 +162,23 @@ Utility is the optimization target for the Portfolio Engine.
 
 Probability Report
 
--   prior
--   posterior
--   confidence
--   evidence_summary
--   assumptions
--   uncertainty
--   expected_utility
--   explanation
+- prior
+- posterior
+- confidence
+- evidence_summary
+- assumptions
+- uncertainty
+- expected_utility
+- explanation
 
 ------------------------------------------------------------------------
 
 # 9. Business Rules
 
--   Missing evidence reduces confidence.
--   Contradictory evidence must never be discarded.
--   Posterior probability must be reproducible.
--   Every probability must include an explanation.
+- Missing evidence reduces confidence.
+- Contradictory evidence must never be discarded.
+- Posterior probability must be reproducible.
+- Every probability must include an explanation.
 
 ------------------------------------------------------------------------
 
@@ -178,10 +196,24 @@ PE005 Calibration failure
 
 ------------------------------------------------------------------------
 
+# 10.1 Model Version
+
+Every probability output must include:
+
+- model_version
+- feature_snapshot
+- calibration_version
+
+This guarantees reproducibility across releases.
+
+------------------------------------------------------------------------
+
 # 11. Acceptance Criteria
 
--   Same input produces same output.
--   Bayesian update is unit tested.
--   Confidence and probability are reported separately.
--   Output is explainable.
--   Full audit trail is available.
+- Same input produces same output.
+- Bayesian update is unit tested.
+- Confidence and probability are reported separately.
+- Output is explainable.
+- Full audit trail is available.
+- Every probability references versioned features from the Feature Store.
+- Model version is included in every probability report.
