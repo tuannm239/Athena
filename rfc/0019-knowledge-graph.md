@@ -1,6 +1,6 @@
 # RFC-0019 --- Knowledge Graph
 
-**Status:** Draft  
+**Status:** Draft\
 **Version:** 1.1
 
 ------------------------------------------------------------------------
@@ -64,7 +64,7 @@ Represents an evaluated investment hypothesis.
 
 ## Feature
 
-Represents a versioned feature from the Feature Store.
+Represents a versioned feature produced by the Feature Store.
 
 Examples:
 
