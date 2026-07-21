@@ -19,6 +19,9 @@ from identity.domain.user import Role, User
 from infrastructure.config import Settings
 from infrastructure.db.engine import build_engine, build_session_factory
 from infrastructure.db.repositories.company import SqlCompanyRepository
+from infrastructure.db.repositories.company_fundamentals import (
+    SqlCompanyFundamentalsRepository,
+)
 from infrastructure.db.repositories.credentials import SqlCredentialStore
 from infrastructure.db.repositories.dataset_catalog import SqlDatasetCatalog
 from infrastructure.db.repositories.decision import SqlDecisionRepository
@@ -47,6 +50,7 @@ class Container:
     decisions: DecisionUseCases
     portfolios: PortfolioUseCases
     companies: CompanyRepository
+    company_fundamentals: SqlCompanyFundamentalsRepository
     universe: UniverseRepository
     market_snapshot: VnMarketSnapshotQuery
     register_user: RegisterUser
@@ -81,6 +85,7 @@ def build_container(
         decisions=DecisionUseCases(repository=SqlDecisionRepository(sessions), events=bus),
         portfolios=PortfolioUseCases(repository=SqlPortfolioRepository(sessions), events=bus),
         companies=SqlCompanyRepository(sessions),
+        company_fundamentals=SqlCompanyFundamentalsRepository(sessions),
         universe=SqlUniverseRepository(sessions),
         market_snapshot=market_snapshot,
         register_user=RegisterUser(users, credentials, hasher, audit=audit),

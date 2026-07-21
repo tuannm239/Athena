@@ -254,6 +254,21 @@ class RefreshTokenRow(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
 
 
+class CompanyFundamentalsRow(Base):
+    """Persisted company fundamentals read-model (`company_fundamentals`).
+
+    One JSON payload per ticker (the VnFundamentals shape: ratios + explainable
+    quality/valuation/growth scores + YoY growth), refreshed by the company
+    sync. The company API reads this; it is never fabricated.
+    """
+
+    __tablename__ = "company_fundamentals"
+
+    ticker: Mapped[str] = mapped_column(String(32), primary_key=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(PortableJSON)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class UniverseRow(Base):
     """Editable investment universe (`watchlist_universe`) — the configured set
     of symbols the sync covers. Never hardcoded in logic; the sync reads active

@@ -136,6 +136,35 @@ def published_prices_present(settings: Settings | None = None) -> bool:
     return frame.height > 0
 
 
+def _sync_companies(args: argparse.Namespace) -> int:
+    """Sync company profiles + fundamentals (separate from the price pipeline)."""
+    from datetime import datetime, timezone
+
+    from company.application.company_sync import sync_companies
+    from infrastructure.db.repositories.company import SqlCompanyRepository
+    from infrastructure.db.repositories.company_fundamentals import (
+        SqlCompanyFundamentalsRepository,
+    )
+    from providers.connectors.vnstock_provider import create_vnstock_provider
+
+    cfg = Settings.from_env()
+    sessions = build_session_factory(build_engine(cfg))
+    if getattr(args, "symbols", None):
+        targets = [s.upper() for s in args.symbols]
+    else:
+        level = SyncLevel(args.level) if getattr(args, "level", None) else None
+        targets = universe_symbols(level)
+    result = sync_companies(
+        targets,
+        provider=create_vnstock_provider(),
+        companies=SqlCompanyRepository(sessions),
+        fundamentals_repo=SqlCompanyFundamentalsRepository(sessions),
+        as_of=datetime.now(timezone.utc).date(),
+    )
+    _emit(result.as_dict())
+    return 0 if result.profiles or result.fundamentals else 1
+
+
 def run_provider_test(
     *, sources: list[str] | None = None, symbol: str = "VCI"
 ) -> list[SourceProbe]:
@@ -227,6 +256,13 @@ def _parser() -> argparse.ArgumentParser:
         "symbols", help="sync several symbols, e.g. `sync symbols FPT VCB`"
     )
     symbols.add_argument("symbols", nargs="+", help="tickers to sync (e.g. FPT VCB HPG)")
+    companies = actions.add_parser(
+        "companies", help="sync company profiles + fundamentals for the universe"
+    )
+    companies.add_argument(
+        "--level", choices=[level.value for level in SyncLevel], help="filter by sync level"
+    )
+    companies.add_argument("--symbols", nargs="*", help="explicit tickers (default: the universe)")
     sync.add_argument("--tickers", help="comma list override (indices/exchanges/symbols)")
 
     provider = groups.add_parser("provider", help="data provider diagnostics")
@@ -255,6 +291,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.action == "diagnose":
             return _provider_diagnose(args)
         return _provider_test(args)
+
+    if args.action == "companies":
+        # Company profiles + fundamentals — a separate dataset (not the price
+        # pipeline), so it does not use the price scheduler.
+        return _sync_companies(args)
 
     # Sync scope: an explicit --tickers override wins; otherwise the scope of
     # the chosen action selects which tickers to cover. All scopes run through
