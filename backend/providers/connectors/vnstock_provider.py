@@ -190,6 +190,20 @@ class RealVnstockClient:
             raise VnstockError(
                 f"vnstock[{self._source}] finance ratio failed for {symbol}: {error}"
             ) from error
+        # Log the raw schema (shape + column headers) once per call so a
+        # shell-less operator sees exactly what the vendor returned — a 0-row
+        # frame still carries its columns, which tells apart "no data" from
+        # "columns our parser didn't recognise". INFO, one line per company.
+        try:
+            _LOG.info(
+                "vnstock[%s] finance.ratio %s shape=%s columns=%s",
+                self._source,
+                symbol.upper(),
+                getattr(frame, "shape", None),
+                [str(c) for c in list(getattr(frame, "columns", []))[:40]],
+            )
+        except Exception:  # noqa: BLE001 — diagnostics must never break ingestion
+            pass
         return self._records(frame)
 
 
