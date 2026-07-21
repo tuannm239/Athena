@@ -15,6 +15,10 @@ from company.domain.company import Company
 from providers.sdk.models import CompanyProfile, FundamentalRecord, SectorMapping
 
 
+def _fr(metric: str, value: str, *, period: str = "2025FY") -> FundamentalRecord:
+    return FundamentalRecord(ticker="FPT", period=period, metric=metric, value=Decimal(value))
+
+
 def _records(ticker: str) -> tuple[FundamentalRecord, ...]:
     def rec(period: str, metric: str, value: str) -> FundamentalRecord:
         return FundamentalRecord(ticker=ticker, period=period, metric=metric, value=Decimal(value))
@@ -52,6 +56,19 @@ class TestBuildPayload:
         payload = build_fundamentals_payload("ZZZ", ())
         assert payload["ratios"]["roe"] is None
         assert payload["revenue_growth_yoy"] is None
+
+    def test_derives_bvps_from_equity_and_shares(self) -> None:
+        # VCI has no direct BVPS; owners' equity ÷ shares → VND/share.
+        payload = build_fundamentals_payload(
+            "FPT", (_fr("owners_equity", "40000000000000"), _fr("shares", "1470000000"))
+        )
+        assert payload["ratios"]["bvps"] == float(Decimal("40000000000000") / Decimal("1470000000"))
+
+    def test_direct_bvps_is_not_overwritten_by_derivation(self) -> None:
+        payload = build_fundamentals_payload(
+            "FPT", (_fr("bvps", "25000"), _fr("owners_equity", "1"), _fr("shares", "1"))
+        )
+        assert payload["ratios"]["bvps"] == 25000.0
 
 
 class _MemCompanies:

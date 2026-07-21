@@ -29,7 +29,7 @@ _LOG = logging.getLogger("athena.company.sync")
 # Bumped whenever the payload gains fields from a new data source, so a
 # `--only-missing` re-run refreshes rows written by an older sync (e.g. the
 # ratio-only v1 rows, before income-statement/balance-sheet EPS/BVPS/revenue).
-FUNDAMENTALS_SCHEMA_VERSION = 4
+FUNDAMENTALS_SCHEMA_VERSION = 5
 
 
 class CompanyDataProvider(Protocol):
@@ -117,6 +117,15 @@ def build_fundamentals_payload(
     taken from whichever dataset most recently reported it.
     """
     latest = _latest_by_metric(records)
+    # Derive BVPS when the vendor reports no direct book-value-per-share: VCI
+    # gives owners' equity (VND) and shares outstanding (count), so
+    # BVPS = owners_equity ÷ shares (explainable; units → VND/share). EPS is
+    # reported directly (eps_basic_vnd) and needs no derivation.
+    if "bvps" not in latest:
+        equity = latest.get("owners_equity")
+        shares = latest.get("shares")
+        if equity is not None and shares not in (None, Decimal(0)):
+            latest = {**latest, "bvps": equity / shares}  # type: ignore[operator]
 
     ratios = _ratios_from(latest)
     revenue_growth = _growth_by_metric(records, "revenue")

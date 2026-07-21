@@ -307,8 +307,11 @@ _RATIO_CANON: dict[str, frozenset[str]] = {
     "roa": frozenset({"roa"}),
     "pe": frozenset({"pe", "pricetoearning"}),
     "pb": frozenset({"pb", "pricetobook"}),
+    # VCI reports EPS directly in the income statement as 'eps_basic_vnd'
+    # (basic EPS, VND) — preferred; diluted stays unmapped to avoid two rows
+    # claiming the same metric for a period.
     "eps": frozenset(
-        {"eps", "epsvnd", "basiceps", "dilutedeps", "earningpershare", "earningspershare"}
+        {"eps", "epsvnd", "epsbasicvnd", "basiceps", "earningpershare", "earningspershare"}
     ),
     "bvps": frozenset(
         {"bvps", "bvpsvnd", "bookvaluepershare", "bookvaluepersharevnd", "bookvalpershare"}
@@ -332,6 +335,11 @@ _RATIO_CANON: dict[str, frozenset[str]] = {
         }
     ),
     "ev_ebitda": frozenset({"evebitda", "evtoebitda"}),
+    # Book-value inputs — VCI has no direct BVPS, so we capture owners' equity
+    # (balance sheet, VND) and shares outstanding (ratio feed, count) and derive
+    # BVPS = owners_equity ÷ shares downstream.
+    "owners_equity": frozenset({"ownersequity", "ownerequity", "equityattributabletoowners"}),
+    "shares": frozenset({"outstandingshares", "sharesoutstanding"}),
 }
 # Inverted: normalised token → canonical metric (first metric that claims it).
 _CANON_TO_METRIC: dict[str, str] = {

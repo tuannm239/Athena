@@ -302,21 +302,22 @@ class TestFundamentals:
         assert by[("2025FY", "ev_ebitda")] == Decimal("11.0")  # ev_to_ebitda mapped
 
     def test_merges_income_statement_and_balance_sheet(self) -> None:
-        """Revenue/EPS live in the income statement, book value in the balance
-        sheet — `fundamentals` must pull all three datasets and merge them so
-        the Growth tab (revenue/EPS YoY) and EPS/BVPS fields populate."""
+        """Real VCI vocabulary: income statement carries revenue ('sales'/
+        'net_sales'), net income and EPS ('eps_basic_vnd'); the balance sheet
+        carries owners' equity and shares. `fundamentals` must pull all three
+        and map them so revenue/EPS growth and the book-value inputs land."""
         ratio = [
             {"item": "Năm", "item_id": "year", "2018": "2025", "2018.1": "2024"},
             {"item": "ROE", "item_id": "roe", "2018": 0.28, "2018.1": 0.26},
+            {"item": "Shares", "item_id": "outstanding_shares", "2018": 1000, "2018.1": 1000},
         ]
         income = [
-            {"item": "Năm", "item_id": "year", "2018": "2025", "2018.1": "2024"},
-            {"item": "Revenue", "item_id": "revenue", "2018": 1200, "2018.1": 1000},
-            {"item": "EPS", "item_id": "eps", "2018": 5100, "2018.1": 4200},
+            {"item": "Sales", "item_id": "net_sales", "2025": 1200, "2024": 1000},
+            {"item": "NPAT", "item_id": "attributable_to_parent_company", "2025": 200, "2024": 160},
+            {"item": "EPS", "item_id": "eps_basic_vnd", "2025": 5100, "2024": 4200},
         ]
         balance = [
-            {"item": "Năm", "item_id": "year", "2018": "2025"},
-            {"item": "BVPS", "item_id": "bvps", "2018": 19000},
+            {"item": "Vốn CSH", "item_id": "owners_equity", "2025": 19000, "2024": 17000},
         ]
         provider = VnstockProvider(
             client=FakeVnstockClient(
@@ -325,10 +326,11 @@ class TestFundamentals:
         )
         by = {(r.period, r.metric): r.value for r in provider.fundamentals("FPT", date.today())}
         assert by[("2025FY", "roe")] == Decimal("0.28")  # ratio
-        assert by[("2025FY", "revenue")] == Decimal("1200")  # income statement
+        assert by[("2025FY", "revenue")] == Decimal("1200")  # income: net_sales
         assert by[("2024FY", "revenue")] == Decimal("1000")
-        assert by[("2025FY", "eps")] == Decimal("5100")  # income statement
-        assert by[("2025FY", "bvps")] == Decimal("19000")  # balance sheet
+        assert by[("2025FY", "eps")] == Decimal("5100")  # income: eps_basic_vnd
+        assert by[("2025FY", "owners_equity")] == Decimal("19000")  # balance sheet
+        assert by[("2025FY", "shares")] == Decimal("1000")  # ratio
 
     def test_statement_year_named_columns_no_year_row(self) -> None:
         """The income statement / balance sheet name their columns by year
