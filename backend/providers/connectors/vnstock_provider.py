@@ -99,6 +99,10 @@ class VnstockClient(Protocol):
 
     def financial_ratios(self, symbol: str, period: str) -> list[Record]: ...
 
+    def income_statement(self, symbol: str, period: str) -> list[Record]: ...
+
+    def balance_sheet(self, symbol: str, period: str) -> list[Record]: ...
+
 
 class RealVnstockClient:
     """Production client backed by the official `vnstock` library.
@@ -194,6 +198,23 @@ class RealVnstockClient:
             ) from error
         return self._records(frame)
 
+    def _log_schema(self, kind: str, symbol: str, frame: object) -> None:
+        # Log the raw schema (shape + column headers) once per call so a
+        # shell-less operator sees exactly what the vendor returned — a 0-row
+        # frame still carries its columns, which tells apart "no data" from
+        # "columns our parser didn't recognise". INFO, one line per company.
+        try:
+            _LOG.info(
+                "vnstock[%s] %s %s shape=%s columns=%s",
+                self._source,
+                kind,
+                symbol.upper(),
+                getattr(frame, "shape", None),
+                [str(c) for c in list(getattr(frame, "columns", []))[:40]],
+            )
+        except Exception:  # noqa: BLE001 — diagnostics must never break ingestion
+            pass
+
     def financial_ratios(self, symbol: str, period: str) -> list[Record]:
         try:
             # dropna=False: a wide ratio table almost always has a NaN somewhere
@@ -206,20 +227,31 @@ class RealVnstockClient:
             raise VnstockError(
                 f"vnstock[{self._source}] finance ratio failed for {symbol}: {error}"
             ) from error
-        # Log the raw schema (shape + column headers) once per call so a
-        # shell-less operator sees exactly what the vendor returned — a 0-row
-        # frame still carries its columns, which tells apart "no data" from
-        # "columns our parser didn't recognise". INFO, one line per company.
+        self._log_schema("finance.ratio", symbol, frame)
+        return self._records(frame)
+
+    def income_statement(self, symbol: str, period: str) -> list[Record]:
         try:
-            _LOG.info(
-                "vnstock[%s] finance.ratio %s shape=%s columns=%s",
-                self._source,
-                symbol.upper(),
-                getattr(frame, "shape", None),
-                [str(c) for c in list(getattr(frame, "columns", []))[:40]],
+            frame = self._stock(symbol).finance.income_statement(
+                period=period, lang="en", dropna=False
             )
-        except Exception:  # noqa: BLE001 — diagnostics must never break ingestion
-            pass
+        except Exception as error:  # noqa: BLE001
+            raise VnstockError(
+                f"vnstock[{self._source}] income_statement failed for {symbol}: {error}"
+            ) from error
+        self._log_schema("finance.income_statement", symbol, frame)
+        return self._records(frame)
+
+    def balance_sheet(self, symbol: str, period: str) -> list[Record]:
+        try:
+            frame = self._stock(symbol).finance.balance_sheet(
+                period=period, lang="en", dropna=False
+            )
+        except Exception as error:  # noqa: BLE001
+            raise VnstockError(
+                f"vnstock[{self._source}] balance_sheet failed for {symbol}: {error}"
+            ) from error
+        self._log_schema("finance.balance_sheet", symbol, frame)
         return self._records(frame)
 
 
@@ -275,7 +307,9 @@ _RATIO_CANON: dict[str, frozenset[str]] = {
     "roa": frozenset({"roa"}),
     "pe": frozenset({"pe", "pricetoearning"}),
     "pb": frozenset({"pb", "pricetobook"}),
-    "eps": frozenset({"eps", "epsvnd", "earningpershare", "earningspershare"}),
+    "eps": frozenset(
+        {"eps", "epsvnd", "basiceps", "dilutedeps", "earningpershare", "earningspershare"}
+    ),
     "bvps": frozenset(
         {"bvps", "bvpsvnd", "bookvaluepershare", "bookvaluepersharevnd", "bookvalpershare"}
     ),
@@ -283,8 +317,20 @@ _RATIO_CANON: dict[str, frozenset[str]] = {
     "net_margin": frozenset({"netprofitmargin", "netmargin", "posttaxmargin", "netprofitmargintt"}),
     "debt_to_equity": frozenset({"debtequity", "debtonequity", "debttoequity"}),
     "current_ratio": frozenset({"currentratio"}),
-    "revenue": frozenset({"revenue", "netrevenue", "sales"}),
-    "net_income": frozenset({"netincome", "posttaxprofit", "profitaftertax"}),
+    "revenue": frozenset(
+        {"revenue", "netrevenue", "sales", "netsale", "netsales", "totalrevenue", "salesrevenue"}
+    ),
+    "net_income": frozenset(
+        {
+            "netincome",
+            "posttaxprofit",
+            "profitaftertax",
+            "netprofit",
+            "netprofitfortheyear",
+            "attributabletoparentcompany",
+            "profitfortheyear",
+        }
+    ),
     "ev_ebitda": frozenset({"evebitda", "evtoebitda"}),
 }
 # Inverted: normalised token → canonical metric (first metric that claims it).
@@ -441,70 +487,89 @@ class VnstockProvider:
 
     # -- FundamentalProvider (Financial Statements / ratios) ----------------
     def fundamentals(self, ticker: str, as_of: date) -> tuple[FundamentalRecord, ...]:
-        rows = self.client.financial_ratios(ticker, "year")
-        if not rows:
-            # The frame came back empty (no exception) — distinguish this from a
-            # column mismatch so a shell-less operator sees which one it is.
-            _LOG.warning(
-                "vnstock[%s] finance.ratio returned 0 rows for %s (empty frame)",
-                getattr(self.client, "source", "?"),
-                ticker.upper(),
-            )
-            return ()
-        # Two shapes exist across sources: VCI/TCBS return a *long* frame (one
-        # row per metric, one column per year); the legacy/AlphaVantage-style
-        # shape is *wide* (one row per period, one column per metric). A year
-        # row (item_id='year') identifies the long form and its real years.
-        year_map = _year_map(rows)
+        """Ratios + income statement + balance sheet, merged into one record set.
+
+        The ratio feed carries the valuation/profitability ratios; revenue and
+        EPS live in the income statement, and book value in the balance sheet —
+        so we pull all three official datasets and canonically map each. The
+        two statements are additive and best-effort: if one is unavailable the
+        ratios still persist.
+        """
         upper = ticker.upper()
+        records = list(self._parse_dataset(upper, self.client.financial_ratios(upper, "year")))
+        for dataset in ("income_statement", "balance_sheet"):
+            fetch = getattr(self.client, dataset, None)
+            if fetch is None:
+                continue
+            try:
+                rows = fetch(upper, "year")
+            except Exception as error:  # noqa: BLE001 — statements are additive
+                _LOG.warning(
+                    "vnstock[%s] %s failed for %s: %s: %s",
+                    getattr(self.client, "source", "?"),
+                    dataset,
+                    upper,
+                    type(error).__name__,
+                    error,
+                )
+                continue
+            records.extend(self._parse_dataset(upper, rows))
+        return tuple(records)
+
+    def _parse_dataset(self, upper: str, rows: list[Record]) -> list[FundamentalRecord]:
+        """Parse one vnstock financial dataset (long or wide) into records.
+
+        Emits a coverage line (matched metrics + the vendor's full item_id
+        vocabulary) on success, and a distinct 0-row / 0-match warning
+        otherwise, so a shell-less operator can see exactly what each dataset
+        returned and why a field is empty.
+        """
+        source = getattr(self.client, "source", "?")
+        if not rows:
+            _LOG.warning("vnstock[%s] dataset returned 0 rows for %s (empty frame)", source, upper)
+            return []
+        # Long form (VCI/TCBS): row = metric, column = year, identified by a
+        # 'year' row. Wide form (legacy/AlphaVantage): row = period.
+        year_map = _year_map(rows)
         records = (
             _parse_long_ratios(upper, rows, year_map)
             if year_map
             else _parse_wide_ratios(upper, rows)
         )
         if year_map and records:
-            # Coverage line: which metrics mapped + the vendor's full item_id
-            # vocabulary, so unmatched fields (e.g. an EPS/BVPS label variant)
-            # are one grep away without needing a zero-match to surface them.
             matched = sorted({r.metric for r in records})
             ids = sorted({str(r.get("item_id") or r.get("item_en")) for r in rows})
             _LOG.info(
                 "vnstock[%s] %s long-form matched=%s years=%s item_ids=%s",
-                getattr(self.client, "source", "?"),
+                source,
                 upper,
                 matched,
                 sorted(set(year_map.values()), reverse=True),
                 ids[:80],
             )
-        if not records:
-            # Data came back but nothing matched — surface the metric labels /
-            # columns so a shell-less operator sees the exact vendor vocabulary
-            # instead of a silent empty result.
-            if year_map:
-                labels = sorted(
-                    {str(r.get("item_id") or r.get("item_en") or r.get("item")) for r in rows}
-                )
-                _LOG.warning(
-                    "vnstock[%s] fundamentals matched 0 metrics for %s (long form, %d rows); "
-                    "years=%s metric_ids=%s",
-                    getattr(self.client, "source", "?"),
-                    upper,
-                    len(rows),
-                    sorted(set(year_map.values()), reverse=True),
-                    labels[:60],
-                )
-            else:
-                sample = rows[0]
-                _LOG.warning(
-                    "vnstock[%s] fundamentals matched 0 metrics for %s (wide form, %d rows); "
-                    "columns=%s sample=%s",
-                    getattr(self.client, "source", "?"),
-                    upper,
-                    len(rows),
-                    list(sample.keys()),
-                    {k: sample[k] for k in list(sample)[:20]},
-                )
-        return tuple(records)
+        elif not records and year_map:
+            labels = sorted(
+                {str(r.get("item_id") or r.get("item_en") or r.get("item")) for r in rows}
+            )
+            _LOG.warning(
+                "vnstock[%s] matched 0 metrics for %s (long form, %d rows); years=%s metric_ids=%s",
+                source,
+                upper,
+                len(rows),
+                sorted(set(year_map.values()), reverse=True),
+                labels[:80],
+            )
+        elif not records:
+            sample = rows[0]
+            _LOG.warning(
+                "vnstock[%s] matched 0 metrics for %s (wide form, %d rows); columns=%s sample=%s",
+                source,
+                upper,
+                len(rows),
+                list(sample.keys()),
+                {k: sample[k] for k in list(sample)[:20]},
+            )
+        return records
 
     # -- SectorProvider (Industry Classification) ---------------------------
     def classification(self, ticker: str) -> SectorMapping | None:

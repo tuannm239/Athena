@@ -157,9 +157,13 @@ class FakeVnstockClient:
         *,
         history: dict[str, list[Record]] | None = None,
         ratios: dict[str, list[Record]] | None = None,
+        income: dict[str, list[Record]] | None = None,
+        balance: dict[str, list[Record]] | None = None,
     ) -> None:
         self._history = history or {"FPT": HISTORY_FPT, "VNINDEX": HISTORY_VNINDEX}
         self._ratios = ratios
+        self._income = income or {}
+        self._balance = balance or {}
         self.calls: list[str] = []
 
     def history(self, symbol: str, start: str, end: str, interval: str) -> list[Record]:
@@ -183,6 +187,14 @@ class FakeVnstockClient:
         if self._ratios is not None:
             return self._ratios.get(symbol.upper(), [])
         return RATIOS_FPT if symbol.upper() == "FPT" else []
+
+    def income_statement(self, symbol: str, period: str) -> list[Record]:
+        self.calls.append(f"income:{symbol}:{period}")
+        return self._income.get(symbol.upper(), [])
+
+    def balance_sheet(self, symbol: str, period: str) -> list[Record]:
+        self.calls.append(f"balance:{symbol}:{period}")
+        return self._balance.get(symbol.upper(), [])
 
 
 class FlakyClient(FakeVnstockClient):
@@ -288,6 +300,35 @@ class TestFundamentals:
         assert by[("2025FY", "roe")] == Decimal("0.30")
         assert by[("2024FY", "roe")] == Decimal("0.27")  # prior year not lost
         assert by[("2025FY", "ev_ebitda")] == Decimal("11.0")  # ev_to_ebitda mapped
+
+    def test_merges_income_statement_and_balance_sheet(self) -> None:
+        """Revenue/EPS live in the income statement, book value in the balance
+        sheet — `fundamentals` must pull all three datasets and merge them so
+        the Growth tab (revenue/EPS YoY) and EPS/BVPS fields populate."""
+        ratio = [
+            {"item": "Năm", "item_id": "year", "2018": "2025", "2018.1": "2024"},
+            {"item": "ROE", "item_id": "roe", "2018": 0.28, "2018.1": 0.26},
+        ]
+        income = [
+            {"item": "Năm", "item_id": "year", "2018": "2025", "2018.1": "2024"},
+            {"item": "Revenue", "item_id": "revenue", "2018": 1200, "2018.1": 1000},
+            {"item": "EPS", "item_id": "eps", "2018": 5100, "2018.1": 4200},
+        ]
+        balance = [
+            {"item": "Năm", "item_id": "year", "2018": "2025"},
+            {"item": "BVPS", "item_id": "bvps", "2018": 19000},
+        ]
+        provider = VnstockProvider(
+            client=FakeVnstockClient(
+                ratios={"FPT": ratio}, income={"FPT": income}, balance={"FPT": balance}
+            )
+        )
+        by = {(r.period, r.metric): r.value for r in provider.fundamentals("FPT", date.today())}
+        assert by[("2025FY", "roe")] == Decimal("0.28")  # ratio
+        assert by[("2025FY", "revenue")] == Decimal("1200")  # income statement
+        assert by[("2024FY", "revenue")] == Decimal("1000")
+        assert by[("2025FY", "eps")] == Decimal("5100")  # income statement
+        assert by[("2025FY", "bvps")] == Decimal("19000")  # balance sheet
 
     def test_records_dedupes_duplicate_column_labels(self) -> None:
         """`_records` must keep every column's values when the vendor repeats a
