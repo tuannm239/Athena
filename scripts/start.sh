@@ -43,14 +43,15 @@ fi
 # SYNC_ON_START=true, run one sync in the BACKGROUND so it never delays the
 # port bind / health check. It writes to the same filesystem the API reads, so
 # the dashboard populates a short while after boot. Default mode is
-# incremental; set SYNC_ON_START_MODE=full for a first, wider backfill. Keep
+# `ensure` (self-healing: full backfill when no readable prices, else
+# incremental top-up); set SYNC_ON_START_MODE=full to force a wider backfill. Keep
 # SYNC_LOOKBACK_DAYS small (e.g. 10) so a fresh ephemeral disk syncs quickly —
 # the snapshot only needs the latest closes. Failure is non-fatal to the API.
 if [ "${SYNC_ON_START:-false}" = "true" ]; then
   echo "[start] SYNC_ON_START=true — launching '${SYNC_ON_START_MODE:-incremental}' market sync in background…"
   (
-    echo "===== ATHENA_SYNC BEGIN mode=${SYNC_ON_START_MODE:-incremental} ====="
-    if python -m data_pipeline.cli sync "${SYNC_ON_START_MODE:-incremental}"; then
+    echo "===== ATHENA_SYNC BEGIN mode=${SYNC_ON_START_MODE:-ensure} ====="
+    if python -m data_pipeline.cli sync "${SYNC_ON_START_MODE:-ensure}"; then
       echo "===== ATHENA_SYNC END ok (see the JSON line above for rows) ====="
     else
       echo "===== ATHENA_SYNC END FAILED (non-fatal; API keeps running) ====="

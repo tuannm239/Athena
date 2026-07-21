@@ -3,6 +3,7 @@
 Commands:
     athena sync full          # full window resync (SYNC_LOOKBACK_DAYS back)
     athena sync incremental   # only days newer than the last published watermark
+    athena sync ensure        # self-heal: full backfill if no readable prices, else incremental
     athena sync market        # indices only — fast; safe every 5-15 min
     athena sync universe      # the configured symbol universe (SYNC_UNIVERSE)
     athena sync symbol FPT    # a single symbol
@@ -33,7 +34,7 @@ import logging
 import os
 from datetime import date
 
-from data_pipeline.application.sync import ProviderSyncService
+from data_pipeline.application.sync import PRICES_DATASET, ProviderSyncService
 from data_pipeline.application.use_cases import DataPipelineUseCases
 from data_pipeline.scheduler import MarketSyncScheduler
 from data_pipeline.tickers import (
@@ -95,6 +96,26 @@ def build_scheduler(
 def _emit(payload: dict[str, object]) -> None:
     """Machine-readable line for cron/log scraping."""
     print(json.dumps(payload, default=str))
+
+
+def published_prices_present(settings: Settings | None = None) -> bool:
+    """True iff the published PRICES snapshot is currently readable and non-empty.
+
+    Uses the *configured* snapshot backend, so it correctly reports "missing"
+    when a prior sync wrote to an ephemeral DuckDB file that a restart wiped
+    (the catalog watermark can survive while the snapshot data does not).
+    """
+    cfg = settings or Settings.from_env()
+    sessions = build_session_factory(build_engine(cfg))
+    pipeline = DataPipelineUseCases(
+        catalog=SqlDatasetCatalog(sessions),
+        snapshots=build_snapshot_store(cfg, sessions),
+    )
+    try:
+        frame = pipeline.read_published(PRICES_DATASET)
+    except Exception:  # noqa: BLE001 — any read failure means "not present"
+        return False
+    return frame.height > 0
 
 
 def run_provider_test(
@@ -173,7 +194,7 @@ def _parser() -> argparse.ArgumentParser:
 
     sync = groups.add_parser("sync", help="market data synchronisation")
     actions = sync.add_subparsers(dest="action", required=True)
-    for name in ("full", "incremental", "status", "market", "universe"):
+    for name in ("full", "incremental", "status", "market", "universe", "ensure"):
         actions.add_parser(name)
     replay = actions.add_parser("replay")
     replay.add_argument("--start", required=True, help="YYYY-MM-DD (inclusive)")
@@ -229,6 +250,15 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.action == "full":
         outcome = scheduler.full()
+    elif args.action == "ensure":
+        # Self-healing boot sync: if the published prices are readable, top up
+        # incrementally; if they are missing (e.g. the snapshot's ephemeral disk
+        # was wiped on a restart while the catalog watermark survived), the
+        # incremental window would fetch nothing, so force a full backfill.
+        if published_prices_present():
+            outcome = scheduler.incremental()
+        else:
+            outcome = scheduler.full()
     elif args.action in ("incremental", "market", "universe", "symbol"):
         # market/universe/symbol are incremental syncs over a scoped ticker set
         # (only data newer than the persisted watermark is fetched).

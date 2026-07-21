@@ -246,3 +246,25 @@ class TestCli:
         monkeypatch.setattr("data_pipeline.cli.build_scheduler", _capture)
         assert main(["sync", "symbol", "FPT"]) == 0
         assert captured["tickers"] == ["FPT"]
+
+    def test_sync_ensure_backfills_when_no_prices(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        calls: list[str] = []
+        sched = _scheduler()
+        ok = sched.full()
+        monkeypatch.setattr(sched, "full", lambda: (calls.append("full"), ok)[1])
+        monkeypatch.setattr(sched, "incremental", lambda: (calls.append("incr"), ok)[1])
+        monkeypatch.setattr("data_pipeline.cli.build_scheduler", lambda **_kw: sched)
+        monkeypatch.setattr("data_pipeline.cli.published_prices_present", lambda: False)
+        assert main(["sync", "ensure"]) == 0
+        assert calls == ["full"]  # no readable prices -> full backfill
+
+    def test_sync_ensure_tops_up_when_prices_present(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        calls: list[str] = []
+        sched = _scheduler()
+        ok = sched.full()
+        monkeypatch.setattr(sched, "full", lambda: (calls.append("full"), ok)[1])
+        monkeypatch.setattr(sched, "incremental", lambda: (calls.append("incr"), ok)[1])
+        monkeypatch.setattr("data_pipeline.cli.build_scheduler", lambda **_kw: sched)
+        monkeypatch.setattr("data_pipeline.cli.published_prices_present", lambda: True)
+        assert main(["sync", "ensure"]) == 0
+        assert calls == ["incr"]  # readable prices -> incremental top-up
