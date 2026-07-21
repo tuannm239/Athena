@@ -180,7 +180,12 @@ class RealVnstockClient:
 
     def financial_ratios(self, symbol: str, period: str) -> list[Record]:
         try:
-            frame = self._stock(symbol).finance.ratio(period=period, lang="en", dropna=True)
+            # dropna=False: a wide ratio table almost always has a NaN somewhere
+            # in each yearly row, and dropna=True drops those rows — which for
+            # VCI empties the whole frame (the "0 ratio records" symptom). We
+            # tolerate NaNs downstream (`_opt_decimal` returns None), so keep
+            # every row and let per-metric parsing decide.
+            frame = self._stock(symbol).finance.ratio(period=period, lang="en", dropna=False)
         except Exception as error:  # noqa: BLE001
             raise VnstockError(
                 f"vnstock[{self._source}] finance ratio failed for {symbol}: {error}"
@@ -320,6 +325,15 @@ class VnstockProvider:
     # -- FundamentalProvider (Financial Statements / ratios) ----------------
     def fundamentals(self, ticker: str, as_of: date) -> tuple[FundamentalRecord, ...]:
         rows = self.client.financial_ratios(ticker, "year")
+        if not rows:
+            # The frame came back empty (no exception) — distinguish this from a
+            # column mismatch so a shell-less operator sees which one it is.
+            _LOG.warning(
+                "vnstock[%s] finance.ratio returned 0 rows for %s (empty frame)",
+                getattr(self.client, "source", "?"),
+                ticker.upper(),
+            )
+            return ()
         records: list[FundamentalRecord] = []
         for row in rows:
             year = _row_year(row)
