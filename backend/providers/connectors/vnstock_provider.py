@@ -259,10 +259,12 @@ _RATIO_CANON: dict[str, frozenset[str]] = {
     "roa": frozenset({"roa"}),
     "pe": frozenset({"pe", "pricetoearning"}),
     "pb": frozenset({"pb", "pricetobook"}),
-    "eps": frozenset({"eps", "earningpershare"}),
-    "bvps": frozenset({"bvps", "bookvaluepershare"}),
+    "eps": frozenset({"eps", "epsvnd", "earningpershare", "earningspershare"}),
+    "bvps": frozenset(
+        {"bvps", "bvpsvnd", "bookvaluepershare", "bookvaluepersharevnd", "bookvalpershare"}
+    ),
     "gross_margin": frozenset({"grossprofitmargin", "grossmargin"}),
-    "net_margin": frozenset({"netprofitmargin", "netmargin", "posttaxmargin"}),
+    "net_margin": frozenset({"netprofitmargin", "netmargin", "posttaxmargin", "netprofitmargintt"}),
     "debt_to_equity": frozenset({"debtequity", "debtonequity", "debttoequity"}),
     "current_ratio": frozenset({"currentratio"}),
     "revenue": frozenset({"revenue", "netrevenue", "sales"}),
@@ -421,6 +423,19 @@ class VnstockProvider:
             if year_cols
             else _parse_wide_ratios(upper, rows)
         )
+        if year_cols and records:
+            # Coverage line: which metrics mapped + the vendor's full item_id
+            # vocabulary, so unmatched fields (e.g. an EPS/BVPS label variant)
+            # are one grep away without needing a zero-match to surface them.
+            matched = sorted({r.metric for r in records})
+            ids = sorted({str(r.get("item_id") or r.get("item_en")) for r in rows})
+            _LOG.info(
+                "vnstock[%s] %s long-form matched=%s item_ids=%s",
+                getattr(self.client, "source", "?"),
+                upper,
+                matched,
+                ids[:80],
+            )
         if not records:
             # Data came back but nothing matched — surface the metric labels /
             # columns so a shell-less operator sees the exact vendor vocabulary
