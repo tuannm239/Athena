@@ -26,6 +26,11 @@ from shared_kernel.money import Currency
 
 _LOG = logging.getLogger("athena.company.sync")
 
+# Bumped whenever the payload gains fields from a new data source, so a
+# `--only-missing` re-run refreshes rows written by an older sync (e.g. the
+# ratio-only v1 rows, before income-statement/balance-sheet EPS/BVPS/revenue).
+FUNDAMENTALS_SCHEMA_VERSION = 2
+
 
 class CompanyDataProvider(Protocol):
     """The provider capabilities a company sync needs (VnstockProvider fits)."""
@@ -101,6 +106,7 @@ def build_fundamentals_payload(
         "ticker": ticker.upper(),
         "exchange": exchange,
         "sector": sector,
+        "schema_version": FUNDAMENTALS_SCHEMA_VERSION,
         "ratios": {
             "roe": _f(ratios.roe),
             "roa": _f(ratios.roa),

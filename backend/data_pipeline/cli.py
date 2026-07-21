@@ -140,7 +140,7 @@ def _sync_companies(args: argparse.Namespace) -> int:
     """Sync company profiles + fundamentals (separate from the price pipeline)."""
     from datetime import datetime, timezone
 
-    from company.application.company_sync import sync_companies
+    from company.application.company_sync import FUNDAMENTALS_SCHEMA_VERSION, sync_companies
     from infrastructure.db.repositories.company import SqlCompanyRepository
     from infrastructure.db.repositories.company_fundamentals import (
         SqlCompanyFundamentalsRepository,
@@ -155,10 +155,20 @@ def _sync_companies(args: argparse.Namespace) -> int:
     else:
         level = SyncLevel(args.level) if getattr(args, "level", None) else None
         targets = universe_symbols(level)
-    # --only-missing: skip tickers already persisted, so repeated runs converge
-    # (bounded memory on small tiers) without redoing completed work.
+    # --only-missing: skip tickers already persisted *at the current schema*, so
+    # repeated runs converge (bounded memory on small tiers) without redoing
+    # completed work — but rows written by an older sync (e.g. ratio-only,
+    # before the income-statement/balance-sheet fields) are treated as stale and
+    # refreshed once.
     if getattr(args, "only_missing", False):
-        targets = [t for t in targets if fundamentals_repo.get(t) is None]
+
+        def _is_stale(ticker: str) -> bool:
+            payload = fundamentals_repo.get(ticker)
+            if payload is None:
+                return True
+            return int(payload.get("schema_version", 1) or 1) < FUNDAMENTALS_SCHEMA_VERSION
+
+        targets = [t for t in targets if _is_stale(t)]
     limit = getattr(args, "limit", None)
     if limit is not None:
         targets = targets[:limit]
