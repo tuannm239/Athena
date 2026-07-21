@@ -72,7 +72,7 @@ def _ratios_from(metrics: dict[str, Decimal]) -> FundamentalRatios:
         bvps=g("bvps"),
         pe=g("pe"),
         pb=g("pb"),
-        ev_ebitda=None,
+        ev_ebitda=g("ev_ebitda"),
     )
 
 

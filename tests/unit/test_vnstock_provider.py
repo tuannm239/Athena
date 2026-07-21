@@ -30,6 +30,7 @@ from data_pipeline.domain.dataset import DatasetStatus
 from providers.connectors.resilience import ProviderCallError, RetryPolicy
 from providers.connectors.resilient import ResilientPriceProvider
 from providers.connectors.vnstock_provider import (
+    RealVnstockClient,
     VnstockError,
     VnstockProvider,
     create_vnstock_price_provider,
@@ -265,6 +266,35 @@ class TestFundamentals:
         assert by[("2024FY", "eps")] == Decimal("4800")
         # the 'year' metadata row is not a metric
         assert not any(m == "year" for (_, m) in by)
+
+    def test_vci_duplicate_year_headers_read_from_year_row(self) -> None:
+        """VCI ships every year column with the *same* header ('2018'); after
+        `_records` de-dups them to '2018','2018.1',… the true years live only in
+        the 'year' row, so periods must be keyed off that row's values — and all
+        years must survive (the Growth tab needs more than one)."""
+        rows: list[Record] = [
+            {"item": "Năm", "item_en": None, "item_id": "year", "2018": "2025", "2018.1": "2024"},
+            {"item": "ROE", "item_en": "ROE", "item_id": "roe", "2018": 0.30, "2018.1": 0.27},
+            {
+                "item": "EV/EBITDA",
+                "item_en": "EV/EBITDA",
+                "item_id": "ev_to_ebitda",
+                "2018": 11.0,
+                "2018.1": 10.0,
+            },
+        ]
+        provider = VnstockProvider(client=FakeVnstockClient(ratios={"FPT": rows}))
+        by = {(r.period, r.metric): r.value for r in provider.fundamentals("FPT", date.today())}
+        assert by[("2025FY", "roe")] == Decimal("0.30")
+        assert by[("2024FY", "roe")] == Decimal("0.27")  # prior year not lost
+        assert by[("2025FY", "ev_ebitda")] == Decimal("11.0")  # ev_to_ebitda mapped
+
+    def test_records_dedupes_duplicate_column_labels(self) -> None:
+        """`_records` must keep every column's values when the vendor repeats a
+        column label (VCI's duplicate year headers) instead of collapsing them."""
+        pd = pytest.importorskip("pandas")
+        frame = pd.DataFrame([[1, 2, 3]], columns=["2018", "2018", "b"])
+        assert RealVnstockClient._records(frame) == [{"2018": 1, "2018.1": 2, "b": 3}]
 
     def test_vci_multiindex_flattened_columns(self) -> None:
         """Real VCI ratio frames arrive as MultiIndex columns flattened to

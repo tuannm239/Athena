@@ -133,9 +133,25 @@ class RealVnstockClient:
         except AttributeError as error:  # not a DataFrame
             raise VnstockError(f"vnstock returned a non-tabular result: {type(frame)}") from error
         if columns and isinstance(columns[0], tuple):
-            flat = ["_".join(str(p) for p in col if str(p) != "").strip("_") for col in columns]
-            df = df.copy()  # type: ignore[attr-defined]
-            df.columns = flat  # type: ignore[attr-defined]
+            names = ["_".join(str(p) for p in col if str(p) != "").strip("_") for col in columns]
+        else:
+            names = [str(c) for c in columns]
+        # De-duplicate repeated labels (VCI's transposed ratio frame ships many
+        # columns with the same year header) so `to_dict` keeps every column's
+        # values instead of collapsing duplicates to a single key.
+        if len(set(names)) != len(names):
+            counts: dict[str, int] = {}
+            unique: list[str] = []
+            for name in names:
+                if name in counts:
+                    counts[name] += 1
+                    unique.append(f"{name}.{counts[name]}")
+                else:
+                    counts[name] = 0
+                    unique.append(name)
+            names = unique
+        df = df.copy()  # type: ignore[attr-defined]
+        df.columns = names  # type: ignore[attr-defined]
         return list(df.to_dict(orient="records"))  # type: ignore[attr-defined]
 
     def _stock(self, symbol: str):  # type: ignore[no-untyped-def]
@@ -269,6 +285,7 @@ _RATIO_CANON: dict[str, frozenset[str]] = {
     "current_ratio": frozenset({"currentratio"}),
     "revenue": frozenset({"revenue", "netrevenue", "sales"}),
     "net_income": frozenset({"netincome", "posttaxprofit", "profitaftertax"}),
+    "ev_ebitda": frozenset({"evebitda", "evtoebitda"}),
 }
 # Inverted: normalised token → canonical metric (first metric that claims it).
 _CANON_TO_METRIC: dict[str, str] = {
@@ -306,11 +323,7 @@ def _row_year(row: Record) -> object | None:
 # These helpers detect that layout and map each metric row to a canonical name.
 _YEAR_RE = re.compile(r"^(19|20)\d{2}$")
 _LABEL_FIELDS = ("item_id", "item_en", "item")  # machine key first, then labels
-
-
-def _year_columns(row: Record) -> list[str]:
-    """Column keys that name a reporting year (e.g. '2018'…'2025'), sorted desc."""
-    return sorted((str(k) for k in row if _YEAR_RE.match(str(k))), reverse=True)
+_LABEL_KEYS = frozenset(_LABEL_FIELDS)
 
 
 def _metric_from_labels(row: Record) -> str | None:
@@ -322,17 +335,43 @@ def _metric_from_labels(row: Record) -> str | None:
     return None
 
 
+def _year_map(rows: list[Record]) -> dict[str, str]:
+    """Map each data-column key → reporting year, read from the 'year' *row*.
+
+    VCI's transposed ratio frame ships its year columns all labelled the same
+    (e.g. sixteen columns literally named '2018'), which a dict collapses to
+    one — losing every year but one. The 'year' row, however, holds the real
+    year under each column position, so we key periods off its *values* (after
+    the record dict has de-duplicated the column keys), not the headers.
+    """
+    for row in rows:
+        if any(_canon(row.get(field)) in _YEAR_CANON for field in _LABEL_FIELDS):
+            mapping: dict[str, str] = {}
+            for key, value in row.items():
+                if key in _LABEL_KEYS:
+                    continue
+                year = str(value).split(".")[0]
+                if _YEAR_RE.match(year):
+                    mapping[str(key)] = year
+            return mapping
+    return {}
+
+
 def _parse_long_ratios(
-    ticker: str, rows: list[Record], year_cols: list[str]
+    ticker: str, rows: list[Record], year_map: dict[str, str]
 ) -> list[FundamentalRecord]:
-    """Long/transposed frame: row = metric, columns = years → one record each."""
+    """Long/transposed frame: row = metric, columns = years → one record each.
+
+    ``year_map`` is column-key → reporting year (from `_year_map`), so we read
+    every year even when the vendor duplicates the column headers.
+    """
     records: list[FundamentalRecord] = []
     for row in rows:
         metric = _metric_from_labels(row)
         if metric is None:
             continue
-        for year in year_cols:
-            value = _opt_decimal(row.get(year))
+        for key, year in year_map.items():
+            value = _opt_decimal(row.get(key))
             if value is not None:
                 records.append(
                     FundamentalRecord(ticker=ticker, period=f"{year}FY", metric=metric, value=value)
@@ -414,43 +453,44 @@ class VnstockProvider:
             return ()
         # Two shapes exist across sources: VCI/TCBS return a *long* frame (one
         # row per metric, one column per year); the legacy/AlphaVantage-style
-        # shape is *wide* (one row per period, one column per metric). Detect
-        # year columns on the first row to pick the parser.
-        year_cols = _year_columns(rows[0])
+        # shape is *wide* (one row per period, one column per metric). A year
+        # row (item_id='year') identifies the long form and its real years.
+        year_map = _year_map(rows)
         upper = ticker.upper()
         records = (
-            _parse_long_ratios(upper, rows, year_cols)
-            if year_cols
+            _parse_long_ratios(upper, rows, year_map)
+            if year_map
             else _parse_wide_ratios(upper, rows)
         )
-        if year_cols and records:
+        if year_map and records:
             # Coverage line: which metrics mapped + the vendor's full item_id
             # vocabulary, so unmatched fields (e.g. an EPS/BVPS label variant)
             # are one grep away without needing a zero-match to surface them.
             matched = sorted({r.metric for r in records})
             ids = sorted({str(r.get("item_id") or r.get("item_en")) for r in rows})
             _LOG.info(
-                "vnstock[%s] %s long-form matched=%s item_ids=%s",
+                "vnstock[%s] %s long-form matched=%s years=%s item_ids=%s",
                 getattr(self.client, "source", "?"),
                 upper,
                 matched,
+                sorted(set(year_map.values()), reverse=True),
                 ids[:80],
             )
         if not records:
             # Data came back but nothing matched — surface the metric labels /
             # columns so a shell-less operator sees the exact vendor vocabulary
             # instead of a silent empty result.
-            if year_cols:
+            if year_map:
                 labels = sorted(
                     {str(r.get("item_id") or r.get("item_en") or r.get("item")) for r in rows}
                 )
                 _LOG.warning(
                     "vnstock[%s] fundamentals matched 0 metrics for %s (long form, %d rows); "
-                    "year_cols=%s metric_ids=%s",
+                    "years=%s metric_ids=%s",
                     getattr(self.client, "source", "?"),
                     upper,
                     len(rows),
-                    year_cols,
+                    sorted(set(year_map.values()), reverse=True),
                     labels[:60],
                 )
             else:
