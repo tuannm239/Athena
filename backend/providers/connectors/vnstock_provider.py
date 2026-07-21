@@ -299,6 +299,68 @@ def _row_year(row: Record) -> object | None:
     return None
 
 
+# The VCI/TCBS ratio frame is *long/transposed*: one row per metric, one column
+# per reporting year (headers 'item', 'item_en', 'item_id', '2018', '2019', …).
+# These helpers detect that layout and map each metric row to a canonical name.
+_YEAR_RE = re.compile(r"^(19|20)\d{2}$")
+_LABEL_FIELDS = ("item_id", "item_en", "item")  # machine key first, then labels
+
+
+def _year_columns(row: Record) -> list[str]:
+    """Column keys that name a reporting year (e.g. '2018'…'2025'), sorted desc."""
+    return sorted((str(k) for k in row if _YEAR_RE.match(str(k))), reverse=True)
+
+
+def _metric_from_labels(row: Record) -> str | None:
+    """Canonical metric for a long-form row via its item_id / item_en / item."""
+    for field in _LABEL_FIELDS:
+        metric = _CANON_TO_METRIC.get(_canon(row.get(field)))
+        if metric is not None:
+            return metric
+    return None
+
+
+def _parse_long_ratios(
+    ticker: str, rows: list[Record], year_cols: list[str]
+) -> list[FundamentalRecord]:
+    """Long/transposed frame: row = metric, columns = years → one record each."""
+    records: list[FundamentalRecord] = []
+    for row in rows:
+        metric = _metric_from_labels(row)
+        if metric is None:
+            continue
+        for year in year_cols:
+            value = _opt_decimal(row.get(year))
+            if value is not None:
+                records.append(
+                    FundamentalRecord(ticker=ticker, period=f"{year}FY", metric=metric, value=value)
+                )
+    return records
+
+
+def _parse_wide_ratios(ticker: str, rows: list[Record]) -> list[FundamentalRecord]:
+    """Wide frame: row = period, columns = metrics (legacy / test shape)."""
+    records: list[FundamentalRecord] = []
+    for row in rows:
+        year = _row_year(row)
+        if year is None:
+            continue
+        period = f"{str(year).split('.')[0]}FY"
+        claimed: dict[str, Decimal] = {}  # metric → first non-null value
+        for key, raw in row.items():
+            metric = _CANON_TO_METRIC.get(_leaf_canon(key))
+            if metric is None or metric in claimed:
+                continue
+            value = _opt_decimal(raw)
+            if value is not None:
+                claimed[metric] = value
+        for metric, value in claimed.items():
+            records.append(
+                FundamentalRecord(ticker=ticker, period=period, metric=metric, value=value)
+            )
+    return records
+
+
 # ---------------------------------------------------------------------------
 # Adapter
 # ---------------------------------------------------------------------------
@@ -348,40 +410,45 @@ class VnstockProvider:
                 ticker.upper(),
             )
             return ()
-        records: list[FundamentalRecord] = []
-        for row in rows:
-            year = _row_year(row)
-            if year is None:
-                continue
-            period = f"{str(year).split('.')[0]}FY"
-            claimed: dict[str, Decimal] = {}  # metric → first non-null value
-            for key, raw in row.items():
-                metric = _CANON_TO_METRIC.get(_leaf_canon(key))
-                if metric is None or metric in claimed:
-                    continue
-                value = _opt_decimal(raw)
-                if value is not None:
-                    claimed[metric] = value
-            for metric, value in claimed.items():
-                records.append(
-                    FundamentalRecord(
-                        ticker=ticker.upper(), period=period, metric=metric, value=value
-                    )
+        # Two shapes exist across sources: VCI/TCBS return a *long* frame (one
+        # row per metric, one column per year); the legacy/AlphaVantage-style
+        # shape is *wide* (one row per period, one column per metric). Detect
+        # year columns on the first row to pick the parser.
+        year_cols = _year_columns(rows[0])
+        upper = ticker.upper()
+        records = (
+            _parse_long_ratios(upper, rows, year_cols)
+            if year_cols
+            else _parse_wide_ratios(upper, rows)
+        )
+        if not records:
+            # Data came back but nothing matched — surface the metric labels /
+            # columns so a shell-less operator sees the exact vendor vocabulary
+            # instead of a silent empty result.
+            if year_cols:
+                labels = sorted(
+                    {str(r.get("item_id") or r.get("item_en") or r.get("item")) for r in rows}
                 )
-        if not records and rows:
-            # Data came back but nothing matched — surface the *actual* column
-            # names + a sample row so a shell-less operator can see why (vendor
-            # renamed/re-nested columns) instead of a silent empty result.
-            sample = rows[0]
-            _LOG.warning(
-                "vnstock[%s] fundamentals matched 0 metrics for %s from %d rows; "
-                "columns=%s sample=%s",
-                getattr(self.client, "source", "?"),
-                ticker.upper(),
-                len(rows),
-                list(sample.keys()),
-                {k: sample[k] for k in list(sample)[:20]},
-            )
+                _LOG.warning(
+                    "vnstock[%s] fundamentals matched 0 metrics for %s (long form, %d rows); "
+                    "year_cols=%s metric_ids=%s",
+                    getattr(self.client, "source", "?"),
+                    upper,
+                    len(rows),
+                    year_cols,
+                    labels[:60],
+                )
+            else:
+                sample = rows[0]
+                _LOG.warning(
+                    "vnstock[%s] fundamentals matched 0 metrics for %s (wide form, %d rows); "
+                    "columns=%s sample=%s",
+                    getattr(self.client, "source", "?"),
+                    upper,
+                    len(rows),
+                    list(sample.keys()),
+                    {k: sample[k] for k in list(sample)[:20]},
+                )
         return tuple(records)
 
     # -- SectorProvider (Industry Classification) ---------------------------

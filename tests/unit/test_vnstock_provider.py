@@ -247,6 +247,25 @@ class TestFundamentals:
     def test_unknown_ticker_empty(self, provider: VnstockProvider) -> None:
         assert provider.fundamentals("ZZZ", date(2026, 1, 31)) == ()
 
+    def test_vci_long_transposed_frame(self) -> None:
+        """The real VCI ratio frame is *long*: one row per metric, one column
+        per year ('item', 'item_en', 'item_id', '2018'…'2025'). The metric-per-
+        row parser must read each year column into a period record."""
+        long_rows: list[Record] = [
+            {"item": "Năm", "item_en": None, "item_id": "year", "2025": "2025", "2024": "2024"},
+            {"item": "ROE", "item_en": "ROE (%)", "item_id": "roe", "2025": 0.28, "2024": 0.26},
+            {"item": "P/E", "item_en": "P/E", "item_id": "pe", "2025": 15.2, "2024": 16.0},
+            {"item": "EPS", "item_en": "EPS", "item_id": "eps", "2025": 5100, "2024": 4800},
+        ]
+        provider = VnstockProvider(client=FakeVnstockClient(ratios={"VNM": long_rows}))
+        by = {(r.period, r.metric): r.value for r in provider.fundamentals("VNM", date.today())}
+        assert by[("2025FY", "roe")] == Decimal("0.28")
+        assert by[("2024FY", "roe")] == Decimal("0.26")
+        assert by[("2025FY", "pe")] == Decimal("15.2")
+        assert by[("2024FY", "eps")] == Decimal("4800")
+        # the 'year' metadata row is not a metric
+        assert not any(m == "year" for (_, m) in by)
+
     def test_vci_multiindex_flattened_columns(self) -> None:
         """Real VCI ratio frames arrive as MultiIndex columns flattened to
         ``group_leaf`` with unit suffixes (``ROE (%)``, ``P/E``, ``EPS (VND)``).
