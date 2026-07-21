@@ -61,6 +61,14 @@ def _snapshots_status(duckdb_dir: str) -> str:
         return f"unavailable: {type(error).__name__}"
 
 
+def _revision() -> str:
+    """Short SHA of the actually-running commit (Render sets RENDER_GIT_COMMIT)."""
+    import os
+
+    sha = os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("GIT_COMMIT") or ""
+    return sha[:7] if sha else "unknown"
+
+
 def _market_data_status(container: Any) -> dict[str, Any]:
     """Operator view of persisted VN prices: storage backend + row count.
 
@@ -133,11 +141,13 @@ def create_app(
         app.include_router(module.router, prefix=API_V1_PREFIX)
 
     @app.get("/health", tags=["ops"], summary="Liveness probe")
-    async def health() -> dict[str, str]:
-        return {"status": "ok"}
+    async def health(response: Response) -> dict[str, str]:
+        response.headers["Cache-Control"] = "no-store"
+        return {"status": "ok", "revision": _revision()}
 
     @app.get("/health/full", tags=["ops"], summary="Component health dashboard")
-    async def health_full(request: Request) -> dict[str, Any]:
+    async def health_full(request: Request, response: Response) -> dict[str, Any]:
+        response.headers["Cache-Control"] = "no-store"  # never serve a cached probe
         deps = container(request)
         components = {
             "database": _database_status(deps.sessions),
@@ -148,6 +158,7 @@ def create_app(
         return {
             "status": status,
             "version": APP_VERSION,
+            "revision": _revision(),  # the actually-running commit (Render sets this)
             "pilot_mode": deps.settings.pilot_mode,
             "components": components,
             "market_data": _market_data_status(deps),
