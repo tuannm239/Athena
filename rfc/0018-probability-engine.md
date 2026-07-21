@@ -216,4 +216,4 @@ This guarantees reproducibility across releases.
 - Output is explainable.
 - Full audit trail is available.
 - Every probability references versioned features from the Feature Store.
-- Model version is included in every probability report.
+- Every probability report includes model_version, feature_snapshot and calibration_version.
