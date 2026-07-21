@@ -9,7 +9,8 @@
 
 Define the persistence architecture for Athena.
 
-Business rules belong to the Domain Layer. The database stores state only.
+Business rules belong to the Domain Layer. The database stores state
+only.
 
 ------------------------------------------------------------------------
 
@@ -120,15 +121,13 @@ Fields:
 
 ------------------------------------------------------------------------
 
-# Feature Store Tables (RFC-0023)
-
 ## feature_registry
 
-Stores versioned feature metadata.
+Stores versioned Feature Store metadata (RFC-0023).
 
 Fields:
 
-- feature_id
+- feature_id (UUID)
 - feature_key
 - version
 - name
@@ -151,13 +150,6 @@ Constraints:
 - Published feature versions are immutable.
 - Lifecycle follows RFC-0023.
 
-Indexes:
-
-- feature_key
-- version
-- category
-- status
-
 ------------------------------------------------------------------------
 
 ## feature_dependencies
@@ -170,24 +162,19 @@ Fields:
 - feature_id
 - depends_on_feature_id
 
-Indexes:
-
-- feature_id
-- depends_on_feature_id
-
 ------------------------------------------------------------------------
 
 # Persistence Rules
 
-PostgreSQL stores only:
+PostgreSQL stores:
 
 - Feature metadata
 - Lifecycle state
-- Governance information
+- Governance metadata
 
 DuckDB stores:
 
-- Calculated feature values
+- Feature values
 - Factor snapshots
 - Analytical datasets
 
@@ -249,4 +236,4 @@ must create an immutable audit record.
 - Schema versioned
 - Reproducible migrations
 - Documented indexes
-- Feature Store persistence compliant with RFC-0023
+- Feature Store persistence complies with RFC-0023
