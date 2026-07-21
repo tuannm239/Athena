@@ -1,13 +1,16 @@
 # RFC-0020 --- Decision Compiler
 
-**Status:** Draft **Version:** 1.0
+**Status:** Draft  
+**Version:** 1.1
+
+------------------------------------------------------------------------
 
 # 1. Purpose
 
 The Decision Compiler transforms Decision DSL into executable Decision
 Objects.
 
-The compiler is deterministic and independent of any LLM.
+The compiler is deterministic, reproducible and independent of any LLM.
 
 ------------------------------------------------------------------------
 
@@ -15,46 +18,58 @@ The compiler is deterministic and independent of any LLM.
 
 The compiler SHALL:
 
--   Parse Decision DSL
--   Validate syntax
--   Validate semantics
--   Build an Abstract Syntax Tree (AST)
--   Produce a Decision Graph
--   Emit a Decision Object
+- Parse Decision DSL
+- Validate syntax
+- Validate semantics
+- Build an Abstract Syntax Tree (AST)
+- Produce an Intermediate Representation (IR)
+- Produce a Decision Graph
+- Emit a Decision Object
 
 The compiler SHALL NOT:
 
--   Call external APIs
--   Execute trades
--   Query databases directly
--   Generate natural-language investment advice
+- Call external APIs
+- Execute trades
+- Query databases directly
+- Generate natural-language investment advice
+- Evaluate probabilities
+- Evaluate portfolio risk
+- Optimize portfolios
 
 ------------------------------------------------------------------------
 
 # 3. Compilation Pipeline
 
-``` text
+```text
 Decision DSL
-    ↓
+      ↓
 Lexer
-    ↓
+      ↓
 Parser
-    ↓
+      ↓
 AST
-    ↓
+      ↓
 Semantic Analyzer
-    ↓
+      ↓
 Rule Validator
-    ↓
+      ↓
+Intermediate Representation (IR)
+      ↓
 Decision Graph
-    ↓
-Probability Engine
-    ↓
-Risk Engine
-    ↓
-Portfolio Engine
-    ↓
+      ↓
 Decision Object
+```
+
+**Runtime Execution**
+
+```text
+Decision Object
+      ↓
+Probability Engine
+      ↓
+Risk Engine
+      ↓
+Portfolio Engine
 ```
 
 ------------------------------------------------------------------------
@@ -65,42 +80,42 @@ Decision Object
 
 Responsibilities:
 
--   Tokenize input
--   Detect lexical errors
--   Preserve source locations
+- Tokenize input
+- Detect lexical errors
+- Preserve source locations
 
 ## Parser
 
 Responsibilities:
 
--   Build AST
--   Validate grammar
--   Report syntax errors
+- Build AST
+- Validate grammar
+- Report syntax errors
 
 ## Semantic Analyzer
 
 Responsibilities:
 
--   Resolve identifiers
--   Validate references
--   Validate types
--   Detect circular dependencies
+- Resolve identifiers
+- Validate references
+- Validate types
+- Detect circular dependencies
 
 ## Rule Validator
 
 Responsibilities:
 
--   Enforce business invariants
--   Validate probability ranges
--   Validate required outputs
+- Enforce business invariants
+- Validate probability ranges
+- Validate required outputs
 
 ## Decision Graph Builder
 
 Responsibilities:
 
--   Convert AST into executable graph
--   Preserve dependency ordering
--   Support explainable execution
+- Convert AST into executable graph
+- Preserve dependency ordering
+- Support explainable execution
 
 ------------------------------------------------------------------------
 
@@ -108,12 +123,12 @@ Responsibilities:
 
 The compiler produces an immutable IR containing:
 
--   Rule ID
--   Conditions
--   Actions
--   Dependencies
--   Metadata
--   Source location
+- Rule ID
+- Conditions
+- Actions
+- Dependencies
+- Metadata
+- Source location
 
 ------------------------------------------------------------------------
 
@@ -121,17 +136,19 @@ The compiler produces an immutable IR containing:
 
 Required fields:
 
--   decision_id
--   hypothesis
--   evidence
--   counter_evidence
--   probability
--   confidence
--   expected_utility
--   portfolio_impact
--   risk_assessment
--   explanation
--   compiler_version
+- decision_id
+- hypothesis
+- evidence
+- counter_evidence
+- probability
+- confidence
+- expected_utility
+- portfolio_impact
+- risk_assessment
+- explanation
+- compiler_version
+- model_version
+- feature_snapshot
 
 ------------------------------------------------------------------------
 
@@ -155,9 +172,11 @@ DC007 Semantic Validation Failed
 
 # 8. Acceptance Criteria
 
--   Deterministic compilation
--   Stable AST generation
--   Versioned IR
--   Explainable Decision Graph
--   100% unit test coverage for compiler stages
--   Compiler output reproducible for identical input
+- Deterministic compilation.
+- Stable AST generation.
+- Versioned IR.
+- Explainable Decision Graph.
+- Compiler performs no runtime evaluation.
+- Compiler performs no external data access.
+- 100% unit test coverage for compiler stages.
+- Compiler output is reproducible for identical input.
