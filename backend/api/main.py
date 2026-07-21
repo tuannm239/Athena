@@ -68,18 +68,29 @@ def _market_data_status(container: Any) -> dict[str, Any]:
     market sync has populated data and which snapshot backend is in use —
     without shell access or reading logs. Read-only; never raises.
     """
+    import os
+
     from data_pipeline.application.sync import PRICES_DATASET
     from data_pipeline.application.use_cases import DataPipelineUseCases
+    from data_pipeline.domain.dataset import DatasetStatus
     from infrastructure.db.repositories.dataset_catalog import SqlDatasetCatalog
     from infrastructure.sql_snapshot_store import build_snapshot_store
 
     cfg = container.settings
-    result: dict[str, Any] = {"snapshot_backend": cfg.snapshot_backend, "price_rows": 0}
+    result: dict[str, Any] = {
+        "snapshot_backend": cfg.snapshot_backend,
+        "price_rows": 0,
+        # Whether the boot sync is even configured (a common "empty" cause).
+        "sync_on_start": os.environ.get("SYNC_ON_START"),
+        "sync_on_start_mode": os.environ.get("SYNC_ON_START_MODE") or "ensure",
+    }
     try:
+        catalog = SqlDatasetCatalog(container.sessions)
         pipeline = DataPipelineUseCases(
-            catalog=SqlDatasetCatalog(container.sessions),
-            snapshots=build_snapshot_store(cfg, container.sessions),
+            catalog=catalog, snapshots=build_snapshot_store(cfg, container.sessions)
         )
+        latest = catalog.latest(PRICES_DATASET, status=DatasetStatus.PUBLISHED)
+        result["latest_version"] = latest.version if latest else None
         try:
             result["price_rows"] = pipeline.read_published(PRICES_DATASET).height
         except Exception as error:  # noqa: BLE001 — no readable snapshot
