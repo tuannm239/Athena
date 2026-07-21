@@ -97,6 +97,17 @@ class TestSchedulerOps:
         outcome = sched.replay(date(2026, 1, 5), date(2026, 1, 6))
         assert outcome.ok and outcome.published and outcome.mode == "replay"
 
+    def test_replay_supersedes_when_full_would_collide(self) -> None:
+        # Reproduces the ephemeral-loss/backend-switch case: a same-day version
+        # already exists, so full() collides (DuplicateDatasetError -> not ok),
+        # but replay() mints a unique version and republishes — the basis for
+        # `sync ensure` using replay to self-heal.
+        sched = _scheduler()
+        sched.full(end=END)
+        assert not sched.full(end=END).ok  # duplicate version -> fails
+        rep = sched.replay(date(2026, 1, 5), END)
+        assert rep.ok and rep.published
+
 
 # ---- retry / failure ------------------------------------------------------
 class _FlakyProvider:
@@ -251,12 +262,12 @@ class TestCli:
         calls: list[str] = []
         sched = _scheduler()
         ok = sched.full()
-        monkeypatch.setattr(sched, "full", lambda: (calls.append("full"), ok)[1])
+        monkeypatch.setattr(sched, "replay", lambda *a, **k: (calls.append("replay"), ok)[1])
         monkeypatch.setattr(sched, "incremental", lambda: (calls.append("incr"), ok)[1])
         monkeypatch.setattr("data_pipeline.cli.build_scheduler", lambda **_kw: sched)
         monkeypatch.setattr("data_pipeline.cli.published_prices_present", lambda: False)
         assert main(["sync", "ensure"]) == 0
-        assert calls == ["full"]  # no readable prices -> full backfill
+        assert calls == ["replay"]  # no readable prices -> replay backfill (unique version)
 
     def test_sync_ensure_tops_up_when_prices_present(self, monkeypatch: pytest.MonkeyPatch) -> None:
         calls: list[str] = []

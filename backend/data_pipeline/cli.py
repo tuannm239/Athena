@@ -32,7 +32,7 @@ import argparse
 import json
 import logging
 import os
-from datetime import date
+from datetime import date, timedelta
 
 from data_pipeline.application.sync import PRICES_DATASET, ProviderSyncService
 from data_pipeline.application.use_cases import DataPipelineUseCases
@@ -253,12 +253,19 @@ def main(argv: list[str] | None = None) -> int:
     elif args.action == "ensure":
         # Self-healing boot sync: if the published prices are readable, top up
         # incrementally; if they are missing (e.g. the snapshot's ephemeral disk
-        # was wiped on a restart while the catalog watermark survived), the
-        # incremental window would fetch nothing, so force a full backfill.
+        # was wiped, or the backend was switched, while the catalog version
+        # survived), re-materialise the window with REPLAY. Replay mints a
+        # unique version (e.g. 2026-07-20#r1), so it supersedes a stale
+        # same-day version instead of colliding with it (full() would raise
+        # DuplicateDatasetError); on a truly fresh catalog it just publishes
+        # the base version. Either way the latest published version then has
+        # readable snapshot data.
         if published_prices_present():
             outcome = scheduler.incremental()
         else:
-            outcome = scheduler.full()
+            end = date.today()
+            start = end - timedelta(days=int(os.environ.get("SYNC_LOOKBACK_DAYS", "365")))
+            outcome = scheduler.replay(start, end)
     elif args.action in ("incremental", "market", "universe", "symbol"):
         # market/universe/symbol are incremental syncs over a scoped ticker set
         # (only data newer than the persisted watermark is fetched).
