@@ -143,7 +143,7 @@ def create_app(
     @app.get("/health", tags=["ops"], summary="Liveness probe")
     async def health(response: Response) -> dict[str, str]:
         response.headers["Cache-Control"] = "no-store"
-        return {"status": "ok", "revision": _revision()}
+        return {"status": "ok"}
 
     @app.get("/health/full", tags=["ops"], summary="Component health dashboard")
     async def health_full(request: Request, response: Response) -> dict[str, Any]:
