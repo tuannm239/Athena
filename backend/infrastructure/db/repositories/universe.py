@@ -78,6 +78,19 @@ class SqlUniverseRepository(UniverseRepository):
                 row.is_active = active
                 row.updated_at = datetime.now(timezone.utc)
 
+    def get(self, symbol: str) -> UniverseEntry | None:
+        with session_scope(self._sessions) as session:
+            row = session.scalar(select(UniverseRow).where(UniverseRow.symbol == symbol))
+            return None if row is None else _from_row(row)
+
+    def remove(self, symbol: str) -> bool:
+        with session_scope(self._sessions) as session:
+            row = session.scalar(select(UniverseRow).where(UniverseRow.symbol == symbol))
+            if row is None:
+                return False
+            session.delete(row)
+            return True
+
     def seed_if_empty(self, entries: tuple[UniverseEntry, ...]) -> int:
         """Insert the seed universe only when the table is empty. Idempotent."""
         with session_scope(self._sessions) as session:

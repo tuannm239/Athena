@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from company.domain.repository import CompanyRepository
 from data_pipeline.application.use_cases import DataPipelineUseCases
+from data_pipeline.universe import UniverseRepository
 from decision_kernel.application.use_cases import DecisionUseCases
 from identity.application.ports import AuthenticationError, AuthorizationError
 from identity.application.use_cases import ApiKeyService, AuthenticateUser, RegisterUser
@@ -27,6 +28,7 @@ from infrastructure.db.repositories.security_stores import (
     SqlRefreshTokenStore,
     SqlSecurityAuditLog,
 )
+from infrastructure.db.repositories.universe import SqlUniverseRepository
 from infrastructure.db.repositories.user import SqlUserRepository
 from infrastructure.events import InProcessEventBus
 from infrastructure.market_read import PublishedMarketPriceReader
@@ -45,6 +47,7 @@ class Container:
     decisions: DecisionUseCases
     portfolios: PortfolioUseCases
     companies: CompanyRepository
+    universe: UniverseRepository
     market_snapshot: VnMarketSnapshotQuery
     register_user: RegisterUser
     authenticate: AuthenticateUser
@@ -78,6 +81,7 @@ def build_container(
         decisions=DecisionUseCases(repository=SqlDecisionRepository(sessions), events=bus),
         portfolios=PortfolioUseCases(repository=SqlPortfolioRepository(sessions), events=bus),
         companies=SqlCompanyRepository(sessions),
+        universe=SqlUniverseRepository(sessions),
         market_snapshot=market_snapshot,
         register_user=RegisterUser(users, credentials, hasher, audit=audit),
         authenticate=AuthenticateUser(

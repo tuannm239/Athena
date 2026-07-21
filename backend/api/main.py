@@ -20,7 +20,7 @@ from api.deps import build_container, container
 from api.envelope import RequestIdMiddleware
 from api.errors import register_error_handlers
 from api.ratelimit import RateLimiter, RateLimitMiddleware
-from api.routes import auth, backtests, companies, decision, market, portfolio
+from api.routes import auth, backtests, companies, decision, market, portfolio, universe
 from infrastructure.config import Settings
 from infrastructure.metrics import Metrics
 from infrastructure.observability import configure_logging
@@ -137,7 +137,7 @@ def create_app(
     app.add_middleware(RequestIdMiddleware, metrics=metrics)
     register_error_handlers(app)
 
-    for module in (auth, decision, portfolio, companies, market, backtests):
+    for module in (auth, decision, portfolio, companies, market, backtests, universe):
         app.include_router(module.router, prefix=API_V1_PREFIX)
 
     @app.get("/health", tags=["ops"], summary="Liveness probe")

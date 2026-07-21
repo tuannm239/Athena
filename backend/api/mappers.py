@@ -10,6 +10,7 @@ from api.schemas import (
     PositionOut,
     ReviewRecordOut,
     RiskAssessmentModel,
+    UniverseEntryResponse,
     VnBreadth,
     VnFlow,
     VnIndexQuote,
@@ -17,6 +18,7 @@ from api.schemas import (
     VnMover,
 )
 from company.domain.company import Company
+from data_pipeline.universe import UniverseEntry
 from decision_kernel.domain.decision import Decision
 from decision_kernel.domain.evidence import Evidence
 from market.application.read_model import MarketSnapshotView, MoverView
@@ -157,4 +159,14 @@ def company_out(company: Company) -> CompanyResponse:
         currency=company.currency,
         status=company.status,
         created_at=company.created_at,
+    )
+
+
+def universe_out(entry: UniverseEntry) -> UniverseEntryResponse:
+    return UniverseEntryResponse(
+        symbol=entry.symbol,
+        sector=entry.sector,
+        sync_level=entry.sync_level.value,
+        priority=entry.priority,
+        is_active=entry.is_active,
     )

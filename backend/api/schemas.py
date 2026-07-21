@@ -181,6 +181,26 @@ class DecisionResponse(BaseModel):
 # -- portfolios ---------------------------------------------------------------
 
 
+class UniverseEntryResponse(BaseModel):
+    symbol: str
+    sector: str
+    sync_level: str
+    priority: int
+    is_active: bool
+
+
+class UniverseUpsertRequest(BaseModel):
+    symbol: str = Field(min_length=1, max_length=32)
+    sector: str = Field(default="OTHER", max_length=64)
+    sync_level: str = Field(default="NORMAL")
+    is_active: bool = True
+
+
+class UniversePatchRequest(BaseModel):
+    sync_level: str | None = None
+    is_active: bool | None = None
+
+
 class PortfolioCreateRequest(BaseModel):
     base_currency: Currency
     cash: Decimal = Field(ge=0)

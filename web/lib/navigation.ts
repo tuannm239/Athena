@@ -62,6 +62,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/backtest", label: "Backtest", icon: LineChart },
       { href: "/scenario", label: "Scenario Simulator", icon: FlaskConical },
       { href: "/market", label: "Market", icon: BarChart3 },
+      { href: "/universe", label: "Universe", icon: Boxes, roles: ["ANALYST", "ADMIN"] },
       { href: "/reports", label: "Reports", icon: FileText },
     ],
   },
