@@ -61,6 +61,36 @@ def _snapshots_status(duckdb_dir: str) -> str:
         return f"unavailable: {type(error).__name__}"
 
 
+def _market_data_status(container: Any) -> dict[str, Any]:
+    """Operator view of persisted VN prices: storage backend + row count.
+
+    Public (no auth) so an operator can confirm from a browser whether the
+    market sync has populated data and which snapshot backend is in use —
+    without shell access or reading logs. Read-only; never raises.
+    """
+    from data_pipeline.application.sync import PRICES_DATASET
+    from data_pipeline.application.use_cases import DataPipelineUseCases
+    from infrastructure.db.repositories.dataset_catalog import SqlDatasetCatalog
+    from infrastructure.sql_snapshot_store import build_snapshot_store
+
+    cfg = container.settings
+    result: dict[str, Any] = {"snapshot_backend": cfg.snapshot_backend, "price_rows": 0}
+    try:
+        pipeline = DataPipelineUseCases(
+            catalog=SqlDatasetCatalog(container.sessions),
+            snapshots=build_snapshot_store(cfg, container.sessions),
+        )
+        try:
+            result["price_rows"] = pipeline.read_published(PRICES_DATASET).height
+        except Exception as error:  # noqa: BLE001 — no readable snapshot
+            result["price_rows"] = 0
+            result["read_detail"] = f"{type(error).__name__}: {error}"
+    except Exception as error:  # noqa: BLE001 — never break the health probe
+        result["error"] = f"{type(error).__name__}: {error}"
+    result["has_prices"] = result["price_rows"] > 0
+    return result
+
+
 def create_app(
     settings: Settings | None = None,
     session_factory: sessionmaker[Session] | None = None,
@@ -109,6 +139,7 @@ def create_app(
             "version": APP_VERSION,
             "pilot_mode": deps.settings.pilot_mode,
             "components": components,
+            "market_data": _market_data_status(deps),
         }
 
     @app.get("/pilot/status", tags=["ops"], summary="Pilot-mode posture")
