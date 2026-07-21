@@ -115,6 +115,7 @@ Each feature must define:
 - calculation_method
 - dependencies
 - freshness_policy
+- frequency
 
 ------------------------------------------------------------------------
 
@@ -136,30 +137,38 @@ A feature may depend on multiple raw datasets but must belong to a single catego
 
 # 4.2 Feature Naming Convention
 
+Feature identifiers are globally unique.
+
 Feature identifiers must follow a consistent namespace.
 
 Examples
 
-```
+```text
 TECH.RSI.14
 TECH.SMA.20
 TECH.EMA.50
 TECH.MACD
 TECH.ADX.14
 
-FUND.ROE
-FUND.ROIC
-FUND.PE
-FUND.PB
-FUND.FCF_YIELD
+COMPANY.ROE
+COMPANY.ROIC
+COMPANY.REVENUE_GROWTH
+COMPANY.EPS_GROWTH
+COMPANY.DEBT_TO_EQUITY
+COMPANY.FCF_YIELD
 
 MARKET.LIQUIDITY_SCORE
 MARKET.BREADTH_SCORE
+MARKET.VOLATILITY_SCORE
 
-PORT.DIVERSIFICATION
+PORT.SECTOR_EXPOSURE
+PORT.CONCENTRATION
 PORT.CASH_RATIO
+PORT.DIVERSIFICATION
 
 BEHAVIOR.BIAS_SCORE
+BEHAVIOR.CONFIDENCE_CALIBRATION
+BEHAVIOR.REVIEW_COMPLETION
 ```
 
 ------------------------------------------------------------------------
