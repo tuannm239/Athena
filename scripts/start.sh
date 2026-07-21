@@ -39,35 +39,40 @@ if [ "${PROVIDER_TEST_ON_START:-false}" = "true" ]; then
   ) &
 fi
 
-# Optional in-container market sync (free tiers without a Shell): when
-# SYNC_ON_START=true, run one sync in the BACKGROUND so it never delays the
-# port bind / health check. It writes to the same filesystem the API reads, so
-# the dashboard populates a short while after boot. Default mode is
-# `ensure` (self-healing: full backfill when no readable prices, else
-# incremental top-up); set SYNC_ON_START_MODE=full to force a wider backfill. Keep
-# SYNC_LOOKBACK_DAYS small (e.g. 10) so a fresh ephemeral disk syncs quickly —
-# the snapshot only needs the latest closes. Failure is non-fatal to the API.
-if [ "${SYNC_ON_START:-false}" = "true" ]; then
-  echo "[start] SYNC_ON_START=true — launching '${SYNC_ON_START_MODE:-incremental}' market sync in background…"
-  (
+# Optional in-container boot syncs (free tiers without a Shell). Both the price
+# sync (SYNC_ON_START) and the company fundamentals sync (SYNC_COMPANIES_ON_START)
+# each spawn a `python -m data_pipeline.cli` child that loads vnstock + pandas
+# (~150–250 MB resident). On a 512 MB tier, running BOTH at once alongside
+# uvicorn triples the peak and the OS OOM-kills the container mid-sync — the
+# symptom is an "ATHENA_… BEGIN" line with no matching "END" and a restart.
+#
+# So we run them SEQUENTIALLY inside a SINGLE background orchestrator: at most
+# one heavy child is resident at a time, and it never delays the port bind /
+# health check (the whole block is backgrounded). Prices go first (the market
+# dashboard is the primary view), companies second and batched.
+(
+  # ---- 1) Price sync -------------------------------------------------------
+  # Default mode `ensure` (self-healing: full backfill when no readable prices,
+  # else incremental top-up); set SYNC_ON_START_MODE=full to force a wider
+  # backfill. Keep SYNC_LOOKBACK_DAYS small so a fresh ephemeral disk syncs
+  # quickly — the snapshot only needs the latest closes. Non-fatal to the API.
+  if [ "${SYNC_ON_START:-false}" = "true" ]; then
     echo "===== ATHENA_SYNC BEGIN mode=${SYNC_ON_START_MODE:-ensure} ====="
     if python -m data_pipeline.cli sync "${SYNC_ON_START_MODE:-ensure}"; then
       echo "===== ATHENA_SYNC END ok (see the JSON line above for rows) ====="
     else
       echo "===== ATHENA_SYNC END FAILED (non-fatal; API keeps running) ====="
     fi
-  ) 2>&1 &
-else
-  echo "[start] SYNC_ON_START is not 'true' — skipping boot sync (dashboard will be empty until a sync runs)."
-fi
+  else
+    echo "[start] SYNC_ON_START is not 'true' — skipping boot price sync."
+  fi
 
-# Optional company fundamentals sync at boot (free tiers without a Shell).
-# Runs in the BACKGROUND, only for tickers not yet synced (--only-missing) and
-# capped per run (SYNC_COMPANIES_LIMIT, default 25) so it stays within memory
-# and converges across restarts until all universe companies are populated.
-if [ "${SYNC_COMPANIES_ON_START:-false}" = "true" ]; then
-  echo "[start] SYNC_COMPANIES_ON_START=true — company profiles/fundamentals in background…"
-  (
+  # ---- 2) Company fundamentals sync ---------------------------------------
+  # Only tickers not yet synced (--only-missing) and capped per run
+  # (SYNC_COMPANIES_LIMIT, default 25) so it stays within memory and converges
+  # across restarts until every universe company is populated. Runs AFTER the
+  # price sync above has exited, so the two never contend for RAM.
+  if [ "${SYNC_COMPANIES_ON_START:-false}" = "true" ]; then
     echo "===== ATHENA_COMPANIES BEGIN (limit=${SYNC_COMPANIES_LIMIT:-25}) ====="
     if python -m data_pipeline.cli sync companies --only-missing \
         --limit "${SYNC_COMPANIES_LIMIT:-25}"; then
@@ -75,8 +80,8 @@ if [ "${SYNC_COMPANIES_ON_START:-false}" = "true" ]; then
     else
       echo "===== ATHENA_COMPANIES END FAILED (non-fatal; API keeps running) ====="
     fi
-  ) 2>&1 &
-fi
+  fi
+) 2>&1 &
 
 echo "[start] Launching uvicorn on 0.0.0.0:${PORT} (workers=${WEB_CONCURRENCY})…"
 exec uvicorn api.main:app \

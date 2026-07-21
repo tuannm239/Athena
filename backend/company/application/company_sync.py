@@ -147,12 +147,20 @@ def sync_companies(
     fundamentals_repo: FundamentalsRepository,
     as_of: date,
 ) -> CompanySyncResult:
-    """Sync each symbol's profile + fundamentals; tolerant per symbol."""
+    """Sync each symbol's profile + fundamentals; tolerant per symbol.
+
+    Emits grep-able per-symbol progress at INFO so a shell-less operator can
+    watch the sync converge (and see exactly where it stalls) from the logs —
+    the final JSON summary is only reached if the whole batch completes.
+    """
     profiles = funds = failures = 0
-    for raw in symbols:
+    total = len(symbols)
+    _LOG.info("company.sync start symbols=%d as_of=%s", total, as_of)
+    for index, raw in enumerate(symbols, start=1):
         ticker = raw.strip().upper()
         if not ticker:
             continue
+        _LOG.info("company.sync [%d/%d] %s begin", index, total, ticker)
         exchange = sector = ""
         try:
             profile = provider.profile(ticker)
@@ -184,10 +192,31 @@ def sync_companies(
                     build_fundamentals_payload(ticker, records, exchange=exchange, sector=sector),
                 )
                 funds += 1
+                _LOG.info(
+                    "company.sync [%d/%d] %s ok (%d ratio records persisted)",
+                    index,
+                    total,
+                    ticker,
+                    len(records),
+                )
+            else:
+                # No ratio rows came back — the profile may still be saved, but
+                # nothing lands in company_fundamentals, so companies_synced
+                # will NOT move for this ticker. Surfaced explicitly so an empty
+                # provider response is distinguishable from a crash in the logs.
+                _LOG.warning(
+                    "company.sync [%d/%d] %s no fundamentals (0 ratio records — not persisted)",
+                    index,
+                    total,
+                    ticker,
+                )
         except Exception as error:  # noqa: BLE001 — tolerate one bad ticker
             failures += 1
             _LOG.warning(
                 "company.fundamentals_failed %s: %s: %s", ticker, type(error).__name__, error
             )
 
+    _LOG.info(
+        "company.sync done profiles=%d fundamentals=%d failures=%d", profiles, funds, failures
+    )
     return CompanySyncResult(profiles=profiles, fundamentals=funds, failures=failures)
