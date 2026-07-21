@@ -29,7 +29,7 @@ _LOG = logging.getLogger("athena.company.sync")
 # Bumped whenever the payload gains fields from a new data source, so a
 # `--only-missing` re-run refreshes rows written by an older sync (e.g. the
 # ratio-only v1 rows, before income-statement/balance-sheet EPS/BVPS/revenue).
-FUNDAMENTALS_SCHEMA_VERSION = 3
+FUNDAMENTALS_SCHEMA_VERSION = 4
 
 
 class CompanyDataProvider(Protocol):
@@ -58,6 +58,27 @@ def _period_metrics(records: tuple[FundamentalRecord, ...]) -> list[tuple[str, d
     for r in records:
         by_period.setdefault(r.period, {})[r.metric] = r.value
     return sorted(by_period.items(), key=lambda kv: kv[0], reverse=True)
+
+
+def _latest_by_metric(records: tuple[FundamentalRecord, ...]) -> dict[str, Decimal]:
+    """Each metric → its value from the newest period that carries it.
+
+    Different vnstock datasets label periods differently (the ratio feed can
+    report a single, mis-labelled year while the income statement/balance sheet
+    carry the real 2022–2025 years), so a single "latest period" would drop
+    whichever dataset didn't own it. Taking the newest value *per metric* keeps
+    every field regardless of which dataset supplied it.
+    """
+    merged: dict[str, Decimal] = {}
+    for _period, metrics in reversed(_period_metrics(records)):  # oldest→newest wins
+        merged.update(metrics)
+    return merged
+
+
+def _growth_by_metric(records: tuple[FundamentalRecord, ...], metric: str) -> Decimal | None:
+    """YoY growth for one metric from its two newest periods (units cancel)."""
+    values = [metrics[metric] for _p, metrics in _period_metrics(records) if metric in metrics]
+    return growth(values[0], values[1]) if len(values) >= 2 else None
 
 
 def _ratios_from(metrics: dict[str, Decimal]) -> FundamentalRatios:
@@ -91,15 +112,15 @@ def build_fundamentals_payload(
     """Build the VnFundamentals read-model payload from provider ratio records.
 
     Scores come from the domain's `quality_score` (explainable); growth is the
-    latest-vs-prior period change in revenue and EPS when both are present.
+    latest-vs-prior change in revenue and EPS. Metrics are merged per-metric
+    across the ratio / income-statement / balance-sheet datasets, so a field is
+    taken from whichever dataset most recently reported it.
     """
-    periods = _period_metrics(records)
-    latest = periods[0][1] if periods else {}
-    prior = periods[1][1] if len(periods) > 1 else {}
+    latest = _latest_by_metric(records)
 
     ratios = _ratios_from(latest)
-    revenue_growth = growth(latest.get("revenue"), prior.get("revenue"))
-    eps_growth = growth(latest.get("eps"), prior.get("eps"))
+    revenue_growth = _growth_by_metric(records, "revenue")
+    eps_growth = _growth_by_metric(records, "eps")
     scores = quality_score(ratios, revenue_growth=revenue_growth, eps_growth=eps_growth)
 
     return {

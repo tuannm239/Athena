@@ -382,13 +382,18 @@ def _metric_from_labels(row: Record) -> str | None:
 
 
 def _year_map(rows: list[Record]) -> dict[str, str]:
-    """Map each data-column key → reporting year, read from the 'year' *row*.
+    """Map each data-column key → reporting year for a transposed frame.
 
-    VCI's transposed ratio frame ships its year columns all labelled the same
-    (e.g. sixteen columns literally named '2018'), which a dict collapses to
-    one — losing every year but one. The 'year' row, however, holds the real
-    year under each column position, so we key periods off its *values* (after
-    the record dict has de-duplicated the column keys), not the headers.
+    Two vendor shapes exist:
+
+    * The ratio frame ships its year columns all labelled the same (e.g. sixteen
+      columns literally named '2018'), which a dict collapses to one — losing
+      every year but one. It carries a 'year' *row* whose values hold the real
+      year under each (de-duplicated) column, so we key periods off that row.
+    * The income statement / balance sheet name their columns by year directly
+      ('2025','2024',…) and carry no 'year' row, so the headers *are* the years.
+
+    Prefer the 'year' row when present (ratio); otherwise use the year headers.
     """
     for row in rows:
         if any(_canon(row.get(field)) in _YEAR_CANON for field in _LABEL_FIELDS):
@@ -399,8 +404,10 @@ def _year_map(rows: list[Record]) -> dict[str, str]:
                 year = str(value).split(".")[0]
                 if _YEAR_RE.match(year):
                     mapping[str(key)] = year
-            return mapping
-    return {}
+            if mapping:
+                return mapping
+    # No 'year' row — the columns are themselves years (income / balance sheet).
+    return {str(key): str(key) for key in rows[0] if _YEAR_RE.match(str(key))}
 
 
 def _parse_long_ratios(

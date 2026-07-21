@@ -330,6 +330,24 @@ class TestFundamentals:
         assert by[("2025FY", "eps")] == Decimal("5100")  # income statement
         assert by[("2025FY", "bvps")] == Decimal("19000")  # balance sheet
 
+    def test_statement_year_named_columns_no_year_row(self) -> None:
+        """The income statement / balance sheet name their columns by year
+        ('2025','2024',…) and carry NO 'year' row — the headers are the years.
+        Parsing must key periods off those headers, not require a year row."""
+        income = [
+            {
+                "item": "Doanh thu",
+                "item_en": "Sales",
+                "item_id": "sales",
+                "2025": 70207688944553.0,
+                "2024": 62962652134635.0,
+            },
+        ]
+        provider = VnstockProvider(client=FakeVnstockClient(income={"FPT": income}, ratios={}))
+        by = {(r.period, r.metric): r.value for r in provider.fundamentals("FPT", date.today())}
+        assert by[("2025FY", "revenue")] == Decimal("70207688944553.0")
+        assert by[("2024FY", "revenue")] == Decimal("62962652134635.0")
+
     def test_records_dedupes_duplicate_column_labels(self) -> None:
         """`_records` must keep every column's values when the vendor repeats a
         column label (VCI's duplicate year headers) instead of collapsing them."""
