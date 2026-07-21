@@ -1,6 +1,6 @@
 # SPEC-07 — Database
 
-> Status: Accepted
+> Status: Accepted  
 > Version: 1.1
 
 # Database Specification
@@ -9,8 +9,7 @@
 
 Define the persistence architecture for Athena.
 
-Business rules belong to the Domain Layer. The database stores state
-only.
+Business rules belong to the Domain Layer. The database stores state only.
 
 ------------------------------------------------------------------------
 
@@ -26,6 +25,7 @@ Stores:
 - Portfolios
 - Positions
 - Decisions
+- Evidence
 - Audit logs
 - Configuration
 - Feature metadata
@@ -70,21 +70,21 @@ Stores:
 
 ## users
 
-- id
+- id (UUID)
 - email
 - status
 - created_at
 
 ## portfolios
 
-- id
+- id (UUID)
 - user_id
 - base_currency
 - created_at
 
 ## positions
 
-- id
+- id (UUID)
 - portfolio_id
 - ticker
 - quantity
@@ -92,7 +92,7 @@ Stores:
 
 ## decisions
 
-- id
+- id (UUID)
 - hypothesis
 - probability
 - confidence
@@ -101,7 +101,7 @@ Stores:
 
 ## evidence
 
-- id
+- id (UUID)
 - decision_id
 - source
 - category
@@ -121,14 +121,16 @@ Fields:
 
 ------------------------------------------------------------------------
 
+# Feature Store Tables (RFC-0023)
+
 ## feature_registry
 
-Stores versioned Feature Store metadata (RFC-0023).
+Stores versioned Feature Store metadata.
 
 Fields:
 
-- feature_id (UUID)
-- feature_key
+- id (UUID)
+- feature_id
 - version
 - name
 - owner
@@ -146,9 +148,16 @@ Fields:
 
 Constraints:
 
-- (feature_key, version) must be unique.
+- (feature_id, version) must be unique.
 - Published feature versions are immutable.
-- Lifecycle follows RFC-0023.
+- Lifecycle transitions follow RFC-0023.
+
+Indexes:
+
+- feature_id
+- version
+- category
+- status
 
 ------------------------------------------------------------------------
 
@@ -158,7 +167,12 @@ Stores feature dependency relationships.
 
 Fields:
 
-- id
+- id (UUID)
+- feature_id
+- depends_on_feature_id
+
+Indexes:
+
 - feature_id
 - depends_on_feature_id
 
@@ -169,8 +183,8 @@ Fields:
 PostgreSQL stores:
 
 - Feature metadata
-- Lifecycle state
-- Governance metadata
+- Feature lifecycle state
+- Feature governance information
 
 DuckDB stores:
 
@@ -203,7 +217,7 @@ Required indexes:
 - decision_id
 - created_at
 - factor_id
-- feature_key
+- feature_id
 - version
 - status
 
@@ -236,4 +250,4 @@ must create an immutable audit record.
 - Schema versioned
 - Reproducible migrations
 - Documented indexes
-- Feature Store persistence complies with RFC-0023
+- Feature Store persistence compliant with RFC-0023
