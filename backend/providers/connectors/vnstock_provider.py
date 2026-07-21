@@ -29,7 +29,9 @@ Capabilities implemented:
 
 from __future__ import annotations
 
+import logging
 import os
+import re
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -55,6 +57,8 @@ from providers.sdk.models import (
     SymbolInfo,
 )
 from shared_kernel.exceptions import DomainError
+
+_LOG = logging.getLogger("athena.providers.vnstock")
 
 # vnstock free VCI/TCBS sources: be a courteous client. One request/second
 # with a small burst, cached for an hour, is plenty for daily ingestion.
@@ -223,23 +227,57 @@ def _str(value: object | None) -> str:
     return "" if value is None else str(value)
 
 
-# A curated allowlist mapping canonical Athena metric names to the vnstock
-# ratio column aliases we recognise. Unknown columns are ignored so a
-# vendor schema change never crashes ingestion (it just narrows coverage).
-_RATIO_METRICS: dict[str, tuple[str, ...]] = {
-    "roe": ("roe", "ROE", "roe_percent", "Meta_roe"),
-    "roa": ("roa", "ROA", "roa_percent"),
-    "pe": ("pe", "PE", "price_to_earning", "priceToEarning"),
-    "pb": ("pb", "PB", "price_to_book", "priceToBook"),
-    "eps": ("eps", "EPS", "earning_per_share", "earningPerShare"),
-    "bvps": ("bvps", "BVPS", "book_value_per_share", "bookValuePerShare"),
-    "gross_margin": ("gross_margin", "grossProfitMargin", "gross_profit_margin"),
-    "net_margin": ("net_margin", "netProfitMargin", "post_tax_margin"),
-    "debt_to_equity": ("debt_to_equity", "debtOnEquity", "de"),
-    "current_ratio": ("current_ratio", "currentPayment", "currentRatio"),
-    "revenue": ("revenue", "revenue_bn", "net_revenue"),
-    "net_income": ("net_income", "post_tax_profit", "profit_after_tax"),
+# Canonical metric → the set of *normalised* column tokens we accept for it.
+# Normalisation (`_canon`) drops parenthetical units and all non-alphanumerics
+# and lowercases, so a vnstock MultiIndex column like ``Profitability_ROE (%)``,
+# a flat ``roe``, ``P/E``, ``EPS (VND)`` or ``Debt/Equity`` all collapse to a
+# stable token (``roe``, ``pe``, ``eps``, ``debtequity``). Matching on the
+# normalised *leaf* name (the part after the MultiIndex group prefix) makes
+# ingestion robust to the group headers and unit suffixes VCI/TCBS attach,
+# instead of the exact-string matching that silently extracted zero rows.
+_RATIO_CANON: dict[str, frozenset[str]] = {
+    "roe": frozenset({"roe"}),
+    "roa": frozenset({"roa"}),
+    "pe": frozenset({"pe", "pricetoearning"}),
+    "pb": frozenset({"pb", "pricetobook"}),
+    "eps": frozenset({"eps", "earningpershare"}),
+    "bvps": frozenset({"bvps", "bookvaluepershare"}),
+    "gross_margin": frozenset({"grossprofitmargin", "grossmargin"}),
+    "net_margin": frozenset({"netprofitmargin", "netmargin", "posttaxmargin"}),
+    "debt_to_equity": frozenset({"debtequity", "debtonequity", "debttoequity"}),
+    "current_ratio": frozenset({"currentratio"}),
+    "revenue": frozenset({"revenue", "netrevenue", "sales"}),
+    "net_income": frozenset({"netincome", "posttaxprofit", "profitaftertax"}),
 }
+# Inverted: normalised token → canonical metric (first metric that claims it).
+_CANON_TO_METRIC: dict[str, str] = {
+    token: metric for metric, tokens in _RATIO_CANON.items() for token in tokens
+}
+# Normalised tokens that identify the reporting-year column.
+_YEAR_CANON: frozenset[str] = frozenset({"year", "yearreport", "reportyear", "nam", "period"})
+
+
+def _canon(value: object) -> str:
+    """Normalise a column name to a comparable token (drop units + punctuation).
+
+    ``ROE (%)`` → ``roe``; ``P/E`` → ``pe``; ``EPS (VND)`` → ``eps``;
+    ``Debt/Equity`` → ``debtequity``.
+    """
+    text = re.sub(r"\(.*?\)", "", str(value))  # strip parenthetical units
+    return re.sub(r"[^a-z0-9]", "", text.lower())
+
+
+def _leaf_canon(key: object) -> str:
+    """Canonical token for a (possibly MultiIndex-flattened ``group_leaf``) key."""
+    return _canon(str(key).split("_")[-1])
+
+
+def _row_year(row: Record) -> object | None:
+    """Find the reporting-year value in a ratio row, tolerant to column naming."""
+    for key, value in row.items():
+        if value is not None and _leaf_canon(key) in _YEAR_CANON:
+            return value
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -284,18 +322,38 @@ class VnstockProvider:
         rows = self.client.financial_ratios(ticker, "year")
         records: list[FundamentalRecord] = []
         for row in rows:
-            year = _first(row, "year", "yearReport", "period", "Meta_yearReport")
+            year = _row_year(row)
             if year is None:
                 continue
             period = f"{str(year).split('.')[0]}FY"
-            for metric, aliases in _RATIO_METRICS.items():
-                value = _opt_decimal(_first(row, *aliases))
+            claimed: dict[str, Decimal] = {}  # metric → first non-null value
+            for key, raw in row.items():
+                metric = _CANON_TO_METRIC.get(_leaf_canon(key))
+                if metric is None or metric in claimed:
+                    continue
+                value = _opt_decimal(raw)
                 if value is not None:
-                    records.append(
-                        FundamentalRecord(
-                            ticker=ticker.upper(), period=period, metric=metric, value=value
-                        )
+                    claimed[metric] = value
+            for metric, value in claimed.items():
+                records.append(
+                    FundamentalRecord(
+                        ticker=ticker.upper(), period=period, metric=metric, value=value
                     )
+                )
+        if not records and rows:
+            # Data came back but nothing matched — surface the *actual* column
+            # names + a sample row so a shell-less operator can see why (vendor
+            # renamed/re-nested columns) instead of a silent empty result.
+            sample = rows[0]
+            _LOG.warning(
+                "vnstock[%s] fundamentals matched 0 metrics for %s from %d rows; "
+                "columns=%s sample=%s",
+                getattr(self.client, "source", "?"),
+                ticker.upper(),
+                len(rows),
+                list(sample.keys()),
+                {k: sample[k] for k in list(sample)[:20]},
+            )
         return tuple(records)
 
     # -- SectorProvider (Industry Classification) ---------------------------

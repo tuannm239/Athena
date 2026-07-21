@@ -151,8 +151,14 @@ RATIOS_FPT: list[Record] = [
 class FakeVnstockClient:
     """Scripted vnstock client — real-shaped records, no network."""
 
-    def __init__(self, *, history: dict[str, list[Record]] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        history: dict[str, list[Record]] | None = None,
+        ratios: dict[str, list[Record]] | None = None,
+    ) -> None:
         self._history = history or {"FPT": HISTORY_FPT, "VNINDEX": HISTORY_VNINDEX}
+        self._ratios = ratios
         self.calls: list[str] = []
 
     def history(self, symbol: str, start: str, end: str, interval: str) -> list[Record]:
@@ -173,6 +179,8 @@ class FakeVnstockClient:
 
     def financial_ratios(self, symbol: str, period: str) -> list[Record]:
         self.calls.append(f"ratios:{symbol}:{period}")
+        if self._ratios is not None:
+            return self._ratios.get(symbol.upper(), [])
         return RATIOS_FPT if symbol.upper() == "FPT" else []
 
 
@@ -238,6 +246,36 @@ class TestFundamentals:
 
     def test_unknown_ticker_empty(self, provider: VnstockProvider) -> None:
         assert provider.fundamentals("ZZZ", date(2026, 1, 31)) == ()
+
+    def test_vci_multiindex_flattened_columns(self) -> None:
+        """Real VCI ratio frames arrive as MultiIndex columns flattened to
+        ``group_leaf`` with unit suffixes (``ROE (%)``, ``P/E``, ``EPS (VND)``).
+        The canonical matcher must still extract them (the exact-string table
+        silently produced zero records — the empty-tab bug)."""
+        vci_rows: list[Record] = [
+            {
+                "Meta_ticker": "VNM",
+                "Meta_yearReport": 2025,
+                "Chỉ tiêu khả năng sinh lợi_ROE (%)": 0.28,
+                "Chỉ tiêu khả năng sinh lợi_ROA (%)": 0.19,
+                "Chỉ tiêu định giá_P/E": 15.2,
+                "Chỉ tiêu định giá_P/B": 4.1,
+                "Chỉ tiêu định giá_EPS (VND)": 5100,
+                "Chỉ tiêu định giá_BVPS (VND)": 19000,
+                "Chỉ tiêu khả năng sinh lợi_Net Profit Margin (%)": 0.17,
+                "Chỉ tiêu thanh khoản_Debt/Equity": 0.32,
+                "Chỉ tiêu thanh khoản_Current Ratio": 2.1,
+            },
+        ]
+        provider = VnstockProvider(client=FakeVnstockClient(ratios={"VNM": vci_rows}))
+        by = {(r.period, r.metric): r.value for r in provider.fundamentals("VNM", date.today())}
+        assert by[("2025FY", "roe")] == Decimal("0.28")
+        assert by[("2025FY", "pe")] == Decimal("15.2")
+        assert by[("2025FY", "eps")] == Decimal("5100")
+        assert by[("2025FY", "bvps")] == Decimal("19000")
+        assert by[("2025FY", "net_margin")] == Decimal("0.17")
+        assert by[("2025FY", "debt_to_equity")] == Decimal("0.32")
+        assert by[("2025FY", "current_ratio")] == Decimal("2.1")
 
 
 # ---- Industry Classification ----------------------------------------------
