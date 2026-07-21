@@ -1,6 +1,6 @@
 # RFC-0019 --- Knowledge Graph
 
-**Status:** Draft\
+**Status:** Draft  
 **Version:** 1.1
 
 ------------------------------------------------------------------------
@@ -8,9 +8,13 @@
 # 1. Purpose
 
 The Knowledge Graph represents relationships across companies,
-industries, macroeconomics and investment decisions.
+industries, macroeconomics, investment decisions and versioned features.
 
 It is the canonical relationship model used by Athena.
+
+The Knowledge Graph provides explainable relationship reasoning across
+the entire investment platform while remaining independent from any
+graph database implementation.
 
 ------------------------------------------------------------------------
 
@@ -19,7 +23,8 @@ It is the canonical relationship model used by Athena.
 - Represent financial relationships explicitly.
 - Support explainable reasoning.
 - Enable impact analysis.
-- Be independent from storage technology.
+- Integrate with the Feature Store.
+- Remain independent from storage technology.
 
 ------------------------------------------------------------------------
 
@@ -43,6 +48,8 @@ It is the canonical relationship model used by Athena.
 
 ## Macro Indicator
 
+Examples:
+
 - Interest Rate
 - Inflation
 - GDP
@@ -62,9 +69,13 @@ Examples:
 
 Represents an evaluated investment hypothesis.
 
+## Evidence
+
+Represents structured evidence consumed by the Probability Engine.
+
 ## Feature
 
-Represents a versioned feature produced by the Feature Store.
+Represents a versioned feature published by the Feature Store.
 
 Examples:
 
@@ -98,11 +109,11 @@ Decision -> SUPPORTED_BY -> Evidence
 
 Decision -> CONTRADICTED_BY -> Evidence
 
+Decision -> USES -> Feature
+
 Feature -> DERIVED_FROM -> Company
 
 Feature -> DERIVED_FROM -> Market
-
-Decision -> USES -> Feature
 
 ------------------------------------------------------------------------
 
@@ -110,8 +121,10 @@ Decision -> USES -> Feature
 
 - Relationships are directed.
 - Every edge has a semantic type.
-- Cycles are allowed only when explicitly defined.
 - Nodes have globally unique identifiers.
+- Cycles are allowed only when explicitly defined.
+- Every Decision must reference versioned Features.
+- Graph traversal must be deterministic.
 
 ------------------------------------------------------------------------
 
@@ -125,6 +138,7 @@ The graph supports:
 - neighborhood search
 - shortest path
 - influence propagation
+- relationship explanation
 
 ------------------------------------------------------------------------
 
@@ -137,9 +151,11 @@ Banking Sector
         ↓
 Real Estate Sector
         ↓
-Steel Companies
+Steel Industry
         ↓
 Company ABC
+        ↓
+Feature: Earnings Growth Score
         ↓
 Decision #12345
 ```
@@ -164,7 +180,7 @@ Every graph snapshot must include:
 - feature_snapshot
 - created_at
 
-This guarantees reproducible graph traversal.
+This guarantees reproducible graph traversal across releases.
 
 ------------------------------------------------------------------------
 
@@ -187,3 +203,4 @@ This guarantees reproducible graph traversal.
 - Every Decision references versioned Features.
 - Every graph snapshot includes graph_version.
 - Historical graph states remain reproducible.
+- Identical graph snapshot produces identical traversal results.
