@@ -93,11 +93,7 @@ async def get_company_prices(
     the frontend shows a real chart when data exists, never sample values.
     """
     key = ticker.upper()
-    series = sorted(
-        (obs for obs in services.market_prices.published_prices() if obs.ticker.upper() == key),
-        key=lambda obs: obs.day,
-    )
-    points = [{"day": obs.day.isoformat(), "close": float(obs.close)} for obs in series]
+    points = services.market_prices.ohlc_for(key)  # [{day,open,high,low,close,volume}]
     return ok(request, {"ticker": key, "points": points})
 
 

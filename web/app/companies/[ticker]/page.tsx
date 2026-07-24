@@ -13,7 +13,7 @@ import { Gauge } from "@/components/ui/gauge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import { PinButton } from "@/components/ui/pin-button";
-import { LineChart } from "@/components/ui/line-chart";
+import { CandlestickChart } from "@/components/ui/candlestick-chart";
 import { Tabs, type TabDef } from "@/components/ui/tabs";
 import { EvidenceCard } from "@/components/ui/evidence-card";
 import { RiskLevelBadge } from "@/components/ui/decision-status-badge";
@@ -146,15 +146,20 @@ export default function CompanyWorkspace({ params }: { params: Promise<{ ticker:
             </CardHeader>
             <CardContent>
               {prices.data && prices.data.points.length > 1 ? (
-                <LineChart
-                  data={prices.data.points.map((p) => p.close)}
-                  tone="primary"
-                  height={180}
+                <CandlestickChart
+                  data={prices.data.points.map((p) => ({
+                    open: p.open,
+                    high: p.high,
+                    low: p.low,
+                    close: p.close,
+                  }))}
+                  height={220}
+                  label={`${T} daily candlesticks`}
                 />
               ) : (
                 <EmptyState
                   title="No price history yet"
-                  description="Daily closes appear here once a market sync has run for this ticker."
+                  description="Daily candles appear here once a market sync has run for this ticker."
                 />
               )}
             </CardContent>

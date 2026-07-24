@@ -69,13 +69,20 @@ def _ts(day: date) -> datetime:
     return datetime.combine(day, time.min, tzinfo=timezone.utc)
 
 
+def _opt(value: object) -> str | None:
+    return None if value is None else str(value)
+
+
 def price_frame(bars: Iterable[PriceBar]) -> pl.DataFrame:
     rows: list[dict[str, object]] = [
         {
             "ticker": bar.ticker,
             "day": _ts(bar.day),
+            "open": _opt(bar.open),
+            "high": _opt(bar.high),
+            "low": _opt(bar.low),
             "close": str(bar.close),
-            "volume": str(bar.volume) if bar.volume is not None else None,
+            "volume": _opt(bar.volume),
         }
         for bar in bars
     ]
@@ -84,6 +91,11 @@ def price_frame(bars: Iterable[PriceBar]) -> pl.DataFrame:
         schema={
             "ticker": pl.Utf8,
             "day": pl.Datetime("us", "UTC"),
+            # OHLC persisted so the workspace can render candlesticks; close is
+            # the only required column (open/high/low are nullable per bar).
+            "open": pl.Utf8,
+            "high": pl.Utf8,
+            "low": pl.Utf8,
             "close": pl.Utf8,
             "volume": pl.Utf8,
         },

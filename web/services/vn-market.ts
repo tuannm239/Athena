@@ -83,7 +83,11 @@ export const vnFundamentalsService = {
 
 export interface VnPricePoint {
   day: string;
+  open: number | null;
+  high: number | null;
+  low: number | null;
   close: number;
+  volume: number | null;
 }
 export interface VnCompanyPrices {
   ticker: string;
