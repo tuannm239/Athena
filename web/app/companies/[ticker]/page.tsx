@@ -168,6 +168,7 @@ export default function CompanyWorkspace({ params }: { params: Promise<{ ticker:
               {prices.data && prices.data.points.length > 1 ? (
                 <CandlestickChart
                   data={prices.data.points.slice(-RANGES[range]).map((p) => ({
+                    day: p.day,
                     open: p.open,
                     high: p.high,
                     low: p.low,
