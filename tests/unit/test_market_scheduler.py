@@ -287,24 +287,25 @@ class TestCli:
         assert main(["sync", "symbol", "FPT"]) == 0
         assert captured["tickers"] == ["FPT"]
 
-    def test_sync_ensure_backfills_when_no_prices(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        calls: list[str] = []
+    def test_sync_ensure_replays_recent_window(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # ensure ALWAYS replays a recent window so the published date advances
+        # each run (an incremental top-up publishes nothing when the source has
+        # no bars past the watermark, leaving the date stuck).
+        calls: list[tuple[str, object, object]] = []
         sched = _scheduler()
         ok = sched.full()
-        monkeypatch.setattr(sched, "replay", lambda *a, **k: (calls.append("replay"), ok)[1])
-        monkeypatch.setattr(sched, "incremental", lambda: (calls.append("incr"), ok)[1])
-        monkeypatch.setattr("data_pipeline.cli.build_scheduler", lambda **_kw: sched)
-        monkeypatch.setattr("data_pipeline.cli.published_prices_present", lambda: False)
-        assert main(["sync", "ensure"]) == 0
-        assert calls == ["replay"]  # no readable prices -> replay backfill (unique version)
 
-    def test_sync_ensure_tops_up_when_prices_present(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        calls: list[str] = []
-        sched = _scheduler()
-        ok = sched.full()
-        monkeypatch.setattr(sched, "full", lambda: (calls.append("full"), ok)[1])
-        monkeypatch.setattr(sched, "incremental", lambda: (calls.append("incr"), ok)[1])
+        def _replay(s: object, e: object, **_k: object) -> object:
+            calls.append(("replay", s, e))
+            return ok
+
+        def _incr() -> object:
+            calls.append(("incr", None, None))
+            return ok
+
+        monkeypatch.setattr(sched, "replay", _replay)
+        monkeypatch.setattr(sched, "incremental", _incr)
         monkeypatch.setattr("data_pipeline.cli.build_scheduler", lambda **_kw: sched)
-        monkeypatch.setattr("data_pipeline.cli.published_prices_present", lambda: True)
         assert main(["sync", "ensure"]) == 0
-        assert calls == ["incr"]  # readable prices -> incremental top-up
+        assert len(calls) == 1 and calls[0][0] == "replay"
+        assert calls[0][1] < calls[0][2]  # a real recent window, ending today

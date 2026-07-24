@@ -354,21 +354,19 @@ def main(argv: list[str] | None = None) -> int:
     if args.action == "full":
         outcome = scheduler.full()
     elif args.action == "ensure":
-        # Self-healing boot sync: if the published prices are readable, top up
-        # incrementally; if they are missing (e.g. the snapshot's ephemeral disk
-        # was wiped, or the backend was switched, while the catalog version
-        # survived), re-materialise the window with REPLAY. Replay mints a
-        # unique version (e.g. 2026-07-20#r1), so it supersedes a stale
-        # same-day version instead of colliding with it (full() would raise
-        # DuplicateDatasetError); on a truly fresh catalog it just publishes
-        # the base version. Either way the latest published version then has
-        # readable snapshot data.
-        if published_prices_present():
-            outcome = scheduler.incremental()
-        else:
-            end = date.today()
-            start = end - timedelta(days=int(os.environ.get("SYNC_LOOKBACK_DAYS", "365")))
-            outcome = scheduler.replay(start, end)
+        # Self-healing boot sync: ALWAYS re-pull a recent window and republish.
+        # An incremental top-up publishes nothing when the provider returns no
+        # bars past the watermark (weekend/holiday, or the source simply has no
+        # newer session), which leaves the published date stuck at the last
+        # sync. REPLAY re-fetches [today-lookback, today] and mints a fresh
+        # {end}#rN version each run, so the published date advances to the
+        # source's latest available session and the snapshot is re-materialised
+        # even if the ephemeral disk was wiped. Keep SYNC_LOOKBACK_DAYS small
+        # (the dashboard only needs the latest closes); a bigger value backfills
+        # more history for the charts.
+        end = date.today()
+        start = end - timedelta(days=int(os.environ.get("SYNC_LOOKBACK_DAYS", "45")))
+        outcome = scheduler.replay(start, end)
     elif args.action in ("incremental", "market", "universe", "symbol", "symbols"):
         # market/universe/symbol are incremental syncs over a scoped ticker set
         # (only data newer than the persisted watermark is fetched).
