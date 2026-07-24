@@ -13,6 +13,7 @@ from providers.connectors.alphavantage import (
     create_alphavantage_price_provider,
 )
 from providers.connectors.chained_price import create_chained_price_provider
+from providers.connectors.dnse import create_dnse_price_provider
 from providers.connectors.static import StaticProvider
 from providers.connectors.tcbs_provider import create_tcbs_price_provider
 from providers.connectors.vci_provider import create_vci_price_provider
@@ -31,6 +32,9 @@ TCBS = "tcbs"
 VNDIRECT = "vndirect"
 VCI = "vci"
 VN_CHAIN = "vn_chain"
+DNSE = "dnse"
+# DNSE primary with a VNStock fallback (spec: DNSE is default, VNStock backstops).
+DNSE_CHAIN = "dnse_chain"
 
 
 # Fast per-source settings inside the chain: short timeout + a single attempt so
@@ -60,6 +64,19 @@ def _create_vn_price_chain() -> object:
     )
 
 
+def _create_dnse_price_chain() -> object:
+    """DNSE primary with VNStock fallback (spec §4/§5).
+
+    DNSE answers first; if it fails for a ticker (outage, unconfigured creds, a
+    changed route) the chain falls through to VNStock so market data never
+    stops. Business layers are unaware of the switch (ADR-0017).
+    """
+    return create_chained_price_provider(
+        create_dnse_price_provider(),
+        create_vnstock_price_provider(),
+    )
+
+
 def build_registry() -> ProviderRegistry:
     """The default registry: Alpha Vantage + vnstock (production) + static."""
     registry = ProviderRegistry()
@@ -77,6 +94,10 @@ def build_registry() -> ProviderRegistry:
     registry.register(Capability.PRICE, TCBS, create_tcbs_price_provider)
     # VN price chain — VNDirect → TCBS → VCI (resilience; ADR-0017).
     registry.register(Capability.PRICE, VN_CHAIN, _create_vn_price_chain)
+    # DNSE OpenAPI — the primary market-data source (prices/indices). Lazy: no
+    # HTTP or credentials until resolved. `dnse_chain` adds a VNStock fallback.
+    registry.register(Capability.PRICE, DNSE, create_dnse_price_provider)
+    registry.register(Capability.PRICE, DNSE_CHAIN, _create_dnse_price_chain)
     # vnstock — Vietnam market (OHLCV incl. VNINDEX/VN30, fundamentals, sectors).
     # Factories are lazy; nothing imports vnstock or hits the network until resolved.
     registry.register(Capability.PRICE, VNSTOCK, create_vnstock_price_provider)
@@ -101,3 +122,22 @@ DEFAULT_SELECTION = {
     Capability.SECTOR.value: VNSTOCK,
     Capability.FX.value: ALPHAVANTAGE,
 }
+
+
+def market_selection(provider: str | None = None, *, failover: bool = True) -> dict[str, str]:
+    """Capability→provider selection for the configured market provider (spec §4).
+
+    `provider` is `MARKET_PROVIDER` ("dnse" default, or "vnstock"); `failover`
+    is `MARKET_FAILOVER`. Only the PRICE capability changes source — DNSE does
+    not serve fundamentals or sector classification, so those stay on VNStock
+    (business layers are unaware; ADR-0017). When DNSE is selected with failover
+    on, PRICE resolves to the DNSE→VNStock chain so an outage never stops data.
+    """
+    chosen = (provider or DNSE).strip().lower()
+    if chosen == VNSTOCK:
+        price = VNSTOCK
+    elif failover:
+        price = DNSE_CHAIN  # DNSE primary, VNStock fallback
+    else:
+        price = DNSE
+    return {**DEFAULT_SELECTION, Capability.PRICE.value: price}

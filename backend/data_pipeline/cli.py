@@ -61,14 +61,21 @@ from providers.connectors.vnstock_source import (
     resolve_source,
     supported_sources,
 )
-from providers.registry_config import DEFAULT_SELECTION, build_registry
+from providers.registry_config import build_registry, market_selection
 from providers.sdk.ports import PriceProvider
 from providers.sdk.registry import Capability
 
 
 def _resolve_price_provider() -> PriceProvider:
-    """The configured market price provider (default vnstock) from the registry."""
-    provider = build_registry().resolve(Capability.PRICE, DEFAULT_SELECTION)
+    """The configured market price provider from the registry.
+
+    Selection is config-only (`MARKET_PROVIDER`/`MARKET_FAILOVER`, ADR-0017):
+    DNSE by default with a VNStock fallback chain; set MARKET_PROVIDER=vnstock
+    to use VNStock alone. The scheduler/pipeline never know which won.
+    """
+    cfg = Settings.from_env()
+    selection = market_selection(cfg.market_provider, failover=cfg.market_failover)
+    provider = build_registry().resolve(Capability.PRICE, selection)
     return provider  # type: ignore[return-value]  # registry returns a PriceProvider
 
 

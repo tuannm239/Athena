@@ -66,6 +66,14 @@ class Settings:
     #   "sql"    — Parquet bytes in the relational DB (Postgres/Neon), durable
     #            across restarts. Set SNAPSHOT_BACKEND=sql on ephemeral hosts.
     snapshot_backend: str = "duckdb"
+    # Active market-data provider (ADR-0017; infrastructure-only selection):
+    #   "dnse"    (default) — DNSE OpenAPI as the primary source;
+    #   "vnstock"           — the VNStock adapter.
+    # With `market_failover` true (default) the primary is tried first and
+    # VNStock backstops it per ticker, so a DNSE outage never stops the data.
+    # Business layers are unaware — they consume the SDK ports only.
+    market_provider: str = "dnse"
+    market_failover: bool = True
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -87,6 +95,9 @@ class Settings:
             vnstock_source=os.environ.get("VNSTOCK_SOURCE", "vci").strip().lower() or "vci",
             snapshot_backend=os.environ.get("SNAPSHOT_BACKEND", "duckdb").strip().lower()
             or "duckdb",
+            market_provider=os.environ.get("MARKET_PROVIDER", "dnse").strip().lower() or "dnse",
+            market_failover=os.environ.get("MARKET_FAILOVER", "true").lower()
+            in ("1", "true", "yes"),
         )
 
     def ensure_safe_for_environment(self) -> None:

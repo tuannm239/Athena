@@ -124,8 +124,8 @@ def build_fundamentals_payload(
     # unit-safe. EPS is reported directly (eps_basic_vnd) and needs no derivation.
     if "bvps" not in latest:
         eps, pe, pb = latest.get("eps"), latest.get("pe"), latest.get("pb")
-        if eps is not None and pe is not None and pb not in (None, Decimal(0)):
-            latest = {**latest, "bvps": eps * pe / pb}  # type: ignore[operator]
+        if eps is not None and pe is not None and pb is not None and pb != 0:
+            latest = {**latest, "bvps": eps * pe / pb}
 
     ratios = _ratios_from(latest)
     revenue_growth = _growth_by_metric(records, "revenue")
