@@ -13,7 +13,7 @@ from typing import Mapping
 import pytest
 
 from providers.connectors.chained_price import create_chained_price_provider
-from providers.connectors.dnse.auth import DnseAuthenticator
+from providers.connectors.dnse.auth import DnseSigner
 from providers.connectors.dnse.client import DnseMarketClient, raise_for_status
 from providers.connectors.dnse.config import DnseConfig, redact_headers
 from providers.connectors.dnse.exceptions import (
@@ -30,13 +30,11 @@ Json = Mapping[str, object]
 
 
 class FakeTransport:
-    """Scripted transport: each call pops the next result (or raises it)."""
+    """Scripted GET transport: each call pops the next result (or raises it)."""
 
-    def __init__(self, get: list[object] | None = None, post: list[object] | None = None) -> None:
+    def __init__(self, get: list[object] | None = None) -> None:
         self._get = list(get or [])
-        self._post = list(post or [])
         self.get_calls: list[tuple[str, dict[str, str], dict[str, str]]] = []
-        self.post_calls: list[tuple[str, dict[str, object], dict[str, str]]] = []
 
     def get_json(
         self, url: str, params: Mapping[str, str], headers: Mapping[str, str], timeout: float
@@ -48,25 +46,14 @@ class FakeTransport:
         assert isinstance(item, dict)
         return item
 
-    def post_json(
-        self, url: str, body: Mapping[str, object], headers: Mapping[str, str], timeout: float
-    ) -> Json:
-        self.post_calls.append((url, dict(body), dict(headers)))
-        item = self._post.pop(0)
-        if isinstance(item, Exception):
-            raise item
-        assert isinstance(item, dict)
-        return item
-
 
 def _client(transport: FakeTransport, config: DnseConfig | None = None) -> DnseMarketClient:
     cfg = config or DnseConfig(base_url="https://dnse.test", max_attempts=3, base_delay_seconds=0.0)
-    slept: list[float] = []
     return DnseMarketClient(
         config=cfg,
         transport=transport,
-        auth=DnseAuthenticator(cfg, transport),
-        sleeper=slept.append,
+        signer=DnseSigner(cfg, date_factory=lambda: "Mon, 21 Jul 2026 05:00:00 GMT"),
+        sleeper=lambda _seconds: None,
     )
 
 
@@ -92,29 +79,33 @@ class TestConfig:
         assert DnseConfig().has_credentials is False
 
 
-# ---- auth -----------------------------------------------------------------
-class TestAuth:
-    def test_no_credentials_returns_none_and_makes_no_call(self) -> None:
-        transport = FakeTransport()
-        auth = DnseAuthenticator(DnseConfig(), transport)
-        assert auth.token() is None
-        assert transport.post_calls == []
+# ---- request signing (HMAC-SHA256) ----------------------------------------
+class TestSigner:
+    def test_unauthenticated_has_no_signature(self) -> None:
+        headers = DnseSigner(DnseConfig()).headers("GET", "/price/ohlc")
+        assert "X-Signature" not in headers and "x-api-key" not in headers
+        assert headers["version"]  # version is always sent
 
-    def test_obtains_and_caches_token(self) -> None:
-        cfg = DnseConfig(base_url="https://dnse.test", api_key="k", api_secret="s")
-        transport = FakeTransport(post=[{"token": "jwt-123"}])
-        auth = DnseAuthenticator(cfg, transport)
-        assert auth.token() == "jwt-123"
-        assert auth.token() == "jwt-123"  # cached — no second login
-        assert len(transport.post_calls) == 1
-        url, body, _ = transport.post_calls[0]
-        assert url.endswith("/auth-service/login") and body == {"username": "k", "password": "s"}
+    def test_signs_with_hmac_sha256(self) -> None:
+        import base64
+        import hashlib
+        import hmac
 
-    def test_missing_token_raises(self) -> None:
-        cfg = DnseConfig(api_key="k", api_secret="s")
-        auth = DnseAuthenticator(cfg, FakeTransport(post=[{"nope": 1}]))
-        with pytest.raises(DnseAuthError):
-            auth.token()
+        cfg = DnseConfig(api_key="key-1", api_secret="secret-1")
+        date = "Mon, 21 Jul 2026 05:00:00 GMT"
+        headers = DnseSigner(cfg, date_factory=lambda: date).headers("GET", "/price/ohlc")
+        expected_sig = base64.b64encode(
+            hmac.new(
+                b"secret-1",
+                f"(request-target): get /price/ohlc\ndate: {date}".encode(),
+                hashlib.sha256,
+            ).digest()
+        ).decode()
+        assert headers["x-api-key"] == "key-1"
+        assert headers["Date"] == date
+        assert 'keyId="key-1"' in headers["X-Signature"]
+        assert 'algorithm="hmac-sha256"' in headers["X-Signature"]
+        assert f'signature="{expected_sig}"' in headers["X-Signature"]
 
 
 # ---- status translation ---------------------------------------------------
@@ -164,10 +155,23 @@ class TestClientRetry:
             _client(transport, cfg).ohlc("FPT", 0, 1, "1D", is_index=False)
         assert len(transport.get_calls) == 2
 
-    def test_index_symbol_uses_index_route(self) -> None:
+    def test_ohlc_route_and_stock_type(self) -> None:
+        transport = FakeTransport(get=[_OHLC])
+        _client(transport).ohlc("FPT", 10, 20, "1D", is_index=False)
+        url, params, _headers = transport.get_calls[0]
+        assert url.endswith("/price/ohlc")
+        assert params == {
+            "type": "STOCK",
+            "symbol": "FPT",
+            "resolution": "1D",
+            "from": "10",
+            "to": "20",
+        }
+
+    def test_index_symbol_uses_index_type(self) -> None:
         transport = FakeTransport(get=[_OHLC])
         _client(transport).ohlc("VNINDEX", 0, 1, "1D", is_index=True)
-        assert transport.get_calls[0][0].endswith("/chart-api/v2/ohlcs/index")
+        assert transport.get_calls[0][1]["type"] == "INDEX"
 
 
 # ---- provider mapping -----------------------------------------------------

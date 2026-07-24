@@ -1,59 +1,66 @@
-"""DNSE authentication — JWT bearer token, cached until near expiry.
+"""DNSE request signing — HMAC-SHA256 HTTP-Signatures (spec §2).
 
-DNSE's OpenAPI issues a JWT from a username/password login; the connector
-reads the credential pair from the environment (`DNSE_API_KEY` /
-`DNSE_API_SECRET`) via `DnseConfig` and never hardcodes or logs them. When no
-credentials are configured the public chart (market-data) routes are used
-without a token, so `token()` returns ``None``.
+DNSE OpenAPI authenticates each request by signing it with the API secret
+(HMAC-SHA256) rather than issuing a session token. `DnseSigner` builds the
+per-request auth headers from the credential pair read from the environment via
+`DnseConfig`; the secret is used only as the HMAC key and is never logged.
+
+String-to-sign (HTTP-Signatures, draft-cavage):
+
+    (request-target): {method} {path}
+    date: {http-date}
+
+Signature header:
+
+    X-Signature: Signature keyId="{api_key}",algorithm="hmac-sha256",
+                 headers="(request-target) date",signature="{base64(hmac)}"
 """
 
 from __future__ import annotations
 
-import time
-from typing import TYPE_CHECKING, Callable
+import base64
+import hashlib
+import hmac
+from email.utils import formatdate
+from typing import Callable
 
 from providers.connectors.dnse.config import DnseConfig
-from providers.connectors.dnse.exceptions import DnseAuthError
 
-if TYPE_CHECKING:  # avoid an import cycle (client imports auth)
-    from providers.connectors.dnse.client import DnseTransport
-
-# DNSE login route (username/password -> JWT). Overridable only via base_url.
-_LOGIN_PATH = "/auth-service/login"
+_ALGORITHM = "hmac-sha256"
+_SIGNED_HEADERS = "(request-target) date"
 
 
-class DnseAuthenticator:
-    """Obtains and caches a DNSE JWT; returns ``None`` when no credentials exist."""
+def _now_http_date() -> str:
+    # RFC 1123 date in GMT, e.g. "Mon, 21 Jul 2026 05:00:00 GMT".
+    return formatdate(timeval=None, localtime=False, usegmt=True)
+
+
+class DnseSigner:
+    """Produces the signed request headers for a DNSE OpenAPI call."""
 
     def __init__(
-        self,
-        config: DnseConfig,
-        transport: "DnseTransport",
-        clock: Callable[[], float] = time.monotonic,
+        self, config: DnseConfig, date_factory: Callable[[], str] = _now_http_date
     ) -> None:
         self._config = config
-        self._transport = transport
-        self._clock = clock
-        self._token: str | None = None
-        self._expires_at = 0.0
+        self._date_factory = date_factory
 
-    def token(self) -> str | None:
-        """A valid bearer token, refreshing when missing/expired; ``None`` if unauthenticated."""
+    def headers(self, method: str, path: str) -> dict[str, str]:
+        """Auth headers for ``method``/``path`` (empty when no credentials)."""
+        headers = {"Accept": "application/json", "version": self._config.api_version}
         if not self._config.has_credentials:
-            return None
-        if self._token is not None and self._clock() < self._expires_at:
-            return self._token
-        self._login()
-        return self._token
-
-    def _login(self) -> None:
-        url = f"{self._config.base_url}{_LOGIN_PATH}"
-        body = {"username": self._config.api_key, "password": self._config.api_secret}
-        headers = {"Accept": "application/json", "Content-Type": "application/json"}
-        data = self._transport.post_json(url, body, headers, self._config.timeout)
-        token = data.get("token") or data.get("access_token")
-        if not token or not isinstance(token, str):
-            raise DnseAuthError("DNSE login returned no token")
-        self._token = token
-        # Refresh a minute before the configured TTL to avoid edge-of-expiry use.
-        self._expires_at = self._clock() + max(self._config.token_ttl_seconds - 60.0, 60.0)
+            return headers  # public/unauthenticated call — no signature
+        date = self._date_factory()
+        string_to_sign = f"(request-target): {method.lower()} {path}\ndate: {date}"
+        digest = hmac.new(
+            self._config.api_secret.encode("utf-8"),
+            string_to_sign.encode("utf-8"),
+            hashlib.sha256,
+        ).digest()
+        signature = base64.b64encode(digest).decode("ascii")
+        headers["Date"] = date
+        headers["x-api-key"] = self._config.api_key
+        headers["X-Signature"] = (
+            f'Signature keyId="{self._config.api_key}",algorithm="{_ALGORITHM}",'
+            f'headers="{_SIGNED_HEADERS}",signature="{signature}"'
+        )
+        return headers

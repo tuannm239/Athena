@@ -42,26 +42,67 @@ def _column(payload: Mapping[str, object], key: str) -> list[object]:
     return list(value) if isinstance(value, list) else []
 
 
+def _bar(
+    symbol: str, day: date | None, close: object, row: Mapping[str, object]
+) -> PriceBar | None:
+    value = _dec(close)
+    if day is None or value is None or value <= 0:
+        return None
+    return PriceBar(
+        ticker=symbol,
+        day=day,
+        close=value,
+        open=_dec(row.get("o", row.get("open"))),
+        high=_dec(row.get("h", row.get("high"))),
+        low=_dec(row.get("l", row.get("low"))),
+        volume=_dec(row.get("v", row.get("volume"))),
+    )
+
+
+def _parse_bar_list(
+    symbol: str, rows: list[object], start: date, end: date
+) -> tuple[PriceBar, ...]:
+    """Parse a list of bar objects (``[{t/time, o, h, l, c, v}, …]``)."""
+    bars: list[PriceBar] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        day = _day_from_epoch(row.get("t", row.get("time", row.get("tradingDate"))))
+        bar = _bar(symbol, day, row.get("c", row.get("close")), row)
+        if bar is not None and start <= bar.day <= end:
+            bars.append(bar)
+    return tuple(sorted(bars, key=lambda b: b.day))
+
+
 def parse_udf_bars(
     symbol: str, payload: Mapping[str, object], start: date, end: date
 ) -> tuple[PriceBar, ...]:
-    """Parse a UDF column-array payload into sorted `PriceBar`s within [start, end].
+    """Parse a DNSE OHLC payload into sorted `PriceBar`s within [start, end].
 
-    Returns ``()`` for an empty/no-data payload (``s`` != "ok" or no rows); rows
-    without a valid positive close are skipped (index/placeholder rows).
+    Handles both the TradingView-UDF column-array shape
+    (``{"t":[…],"o":[…],…}``) and a list-of-bar-objects shape carried under
+    ``data``/``bars``/``candles``. Returns ``()`` for an empty/no-data payload;
+    rows without a valid positive close are skipped.
     """
     status = payload.get("s")
     if status not in (None, "ok"):
         return ()
     times = _column(payload, "t")
-    closes = _column(payload, "c")
-    if not times or len(closes) != len(times):
+    if not times:
+        for key in ("data", "bars", "candles", "ohlc"):
+            value = payload.get(key)
+            if isinstance(value, list) and value:
+                return _parse_bar_list(symbol, value, start, end)
         return ()
-    opens = _column(payload, "o")
-    highs = _column(payload, "h")
-    lows = _column(payload, "l")
-    volumes = _column(payload, "v")
-
+    closes = _column(payload, "c")
+    if len(closes) != len(times):
+        return ()
+    opens, highs, lows, volumes = (
+        _column(payload, "o"),
+        _column(payload, "h"),
+        _column(payload, "l"),
+        _column(payload, "v"),
+    )
     bars: list[PriceBar] = []
     for i, raw_time in enumerate(times):
         day = _day_from_epoch(raw_time)

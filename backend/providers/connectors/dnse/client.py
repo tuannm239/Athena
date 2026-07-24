@@ -1,10 +1,12 @@
 """DNSE HTTP client — the only network seam for the DNSE connector.
 
 `DnseTransport` is the injectable seam (production: `HttpxDnseTransport`), so
-the adapter and its tests never touch the network. Every HTTP failure is
-translated to a typed `DnseError` (spec §7); transient failures (429/5xx/
-timeout/network) are retried with exponential backoff (spec §9); secrets are
-never logged (spec §8).
+the adapter and its tests never touch the network. Requests are signed per call
+(HMAC-SHA256; `DnseSigner`), every HTTP failure is translated to a typed
+`DnseError` (spec §7), transient failures (429/5xx/timeout/network) are retried
+with exponential backoff (spec §9), and secrets are never logged (spec §8).
+
+Market data: ``GET {base}/price/ohlc?type={STOCK|INDEX}&symbol&resolution&from&to``.
 """
 
 from __future__ import annotations
@@ -14,7 +16,7 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Mapping, Protocol
 
-from providers.connectors.dnse.auth import DnseAuthenticator
+from providers.connectors.dnse.auth import DnseSigner
 from providers.connectors.dnse.config import DnseConfig, redact_headers
 from providers.connectors.dnse.exceptions import (
     TRANSIENT_ERRORS,
@@ -26,9 +28,8 @@ from providers.connectors.dnse.exceptions import (
 
 _LOG = logging.getLogger("athena.provider.dnse")
 
-# DNSE chart (TradingView-UDF) OHLC routes — stocks vs indices.
-_OHLC_STOCK_PATH = "/chart-api/v2/ohlcs/stock"
-_OHLC_INDEX_PATH = "/chart-api/v2/ohlcs/index"
+# DNSE OpenAPI OHLC route (bar_type is the `type` query param: STOCK / INDEX).
+_OHLC_PATH = "/price/ohlc"
 
 Json = Mapping[str, object]
 
@@ -46,14 +47,10 @@ def raise_for_status(status: int, detail: str) -> None:
 
 
 class DnseTransport(Protocol):
-    """The only network seam. Methods return a JSON object or raise `DnseError`."""
+    """The only network seam. Returns a JSON object or raises a typed `DnseError`."""
 
     def get_json(
         self, url: str, params: Mapping[str, str], headers: Mapping[str, str], timeout: float
-    ) -> Json: ...
-
-    def post_json(
-        self, url: str, body: Mapping[str, object], headers: Mapping[str, str], timeout: float
     ) -> Json: ...
 
 
@@ -63,29 +60,10 @@ class HttpxDnseTransport:
     def get_json(
         self, url: str, params: Mapping[str, str], headers: Mapping[str, str], timeout: float
     ) -> Json:
-        return self._request("GET", url, headers, timeout, params=params)
-
-    def post_json(
-        self, url: str, body: Mapping[str, object], headers: Mapping[str, str], timeout: float
-    ) -> Json:
-        return self._request("POST", url, headers, timeout, json=body)
-
-    def _request(
-        self,
-        method: str,
-        url: str,
-        headers: Mapping[str, str],
-        timeout: float,
-        *,
-        params: Mapping[str, str] | None = None,
-        json: Mapping[str, object] | None = None,
-    ) -> Json:
         import httpx
 
         try:
-            response = httpx.request(
-                method, url, params=params, json=json, headers=dict(headers), timeout=timeout
-            )
+            response = httpx.get(url, params=dict(params), headers=dict(headers), timeout=timeout)
         except httpx.TimeoutException as error:
             raise DnseUnavailableError(f"DNSE timeout for {url}") from error
         except httpx.HTTPError as error:  # transport/connection error
@@ -102,16 +80,15 @@ class HttpxDnseTransport:
 
 @dataclass
 class DnseMarketClient:
-    """Market-data client over the DNSE chart API (OHLC for stocks + indices).
+    """Market-data client over the DNSE OpenAPI OHLC route (stocks + indices).
 
-    Retries only transient failures with exponential backoff, attaches a bearer
-    token when credentials are configured, and logs request/latency/retries with
-    secrets redacted.
+    Retries only transient failures with exponential backoff, signs each request
+    with HMAC-SHA256, and logs request/latency/retries with secrets redacted.
     """
 
     config: DnseConfig
     transport: DnseTransport
-    auth: DnseAuthenticator
+    signer: DnseSigner
     sleeper: Callable[[float], None] = time.sleep
     clock: Callable[[], float] = time.monotonic
     logger: logging.Logger = _LOG
@@ -119,24 +96,25 @@ class DnseMarketClient:
     @classmethod
     def from_env(cls, transport: DnseTransport | None = None) -> DnseMarketClient:
         config = DnseConfig.from_env()
-        chosen = transport or HttpxDnseTransport()
-        return cls(config=config, transport=chosen, auth=DnseAuthenticator(config, chosen))
+        return cls(
+            config=config,
+            transport=transport or HttpxDnseTransport(),
+            signer=DnseSigner(config),
+        )
 
     def ohlc(self, symbol: str, frm: int, to: int, resolution: str, *, is_index: bool) -> Json:
-        path = _OHLC_INDEX_PATH if is_index else _OHLC_STOCK_PATH
+        params = {
+            "type": "INDEX" if is_index else "STOCK",
+            "symbol": symbol,
+            "resolution": resolution,
+            "from": str(frm),
+            "to": str(to),
+        }
+        return self._get(_OHLC_PATH, params, symbol)
+
+    def _get(self, path: str, params: Mapping[str, str], label: str) -> Json:
         url = f"{self.config.base_url}{path}"
-        params = {"symbol": symbol, "resolution": resolution, "from": str(frm), "to": str(to)}
-        return self._get(url, params, symbol)
-
-    def _headers(self) -> dict[str, str]:
-        headers = {"Accept": "application/json", "User-Agent": "AthenaBot/1.0"}
-        token = self.auth.token()
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
-        return headers
-
-    def _get(self, url: str, params: Mapping[str, str], label: str) -> Json:
-        headers = self._headers()
+        headers = self.signer.headers("GET", path)
         last: DnseError | None = None
         for attempt in range(1, self.config.max_attempts + 1):
             started = self.clock()

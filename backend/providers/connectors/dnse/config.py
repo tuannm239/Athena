@@ -11,13 +11,25 @@ import os
 from dataclasses import dataclass
 from typing import Mapping
 
-# DNSE OpenAPI base (overridable via DNSE_BASE_URL). Market-data (chart) routes
-# are public; authenticated routes attach a bearer token when credentials exist.
-DEFAULT_BASE_URL = "https://api.dnse.com.vn"
+# DNSE OpenAPI base (overridable via DNSE_BASE_URL). Requests are signed per
+# call with HMAC-SHA256 (HTTP-Signatures scheme) using the API key/secret.
+DEFAULT_BASE_URL = "https://openapi.dnse.com.vn"
+# API version sent in the `version` header (DNSE_API_VERSION overrides).
+DEFAULT_API_VERSION = "2026-05-07"
 
 # Header/field names whose values must never be logged.
 _SECRET_NAMES = frozenset(
-    {"authorization", "token", "access_token", "api_key", "api_secret", "password", "signature"}
+    {
+        "authorization",
+        "x-signature",
+        "x-api-key",
+        "token",
+        "access_token",
+        "api_key",
+        "api_secret",
+        "password",
+        "signature",
+    }
 )
 _REDACTED = "***redacted***"
 
@@ -29,14 +41,14 @@ class DnseConfig:
     base_url: str = DEFAULT_BASE_URL
     api_key: str = ""
     api_secret: str = ""
+    api_version: str = DEFAULT_API_VERSION
     timeout: float = 10.0
     max_attempts: int = 4
     base_delay_seconds: float = 0.5
-    token_ttl_seconds: float = 3600.0
 
     @property
     def has_credentials(self) -> bool:
-        """True when both credentials are present (auth is otherwise skipped)."""
+        """True when both credentials are present (requests are otherwise unsigned)."""
         return bool(self.api_key and self.api_secret)
 
     @classmethod
@@ -45,6 +57,7 @@ class DnseConfig:
             base_url=(os.environ.get("DNSE_BASE_URL") or DEFAULT_BASE_URL).rstrip("/"),
             api_key=os.environ.get("DNSE_API_KEY", ""),
             api_secret=os.environ.get("DNSE_API_SECRET", ""),
+            api_version=os.environ.get("DNSE_API_VERSION") or DEFAULT_API_VERSION,
             timeout=float(os.environ.get("DNSE_TIMEOUT_SECONDS", "10")),
             max_attempts=int(os.environ.get("DNSE_MAX_ATTEMPTS", "4")),
         )
