@@ -57,16 +57,17 @@ class TestBuildPayload:
         assert payload["ratios"]["roe"] is None
         assert payload["revenue_growth_yoy"] is None
 
-    def test_derives_bvps_from_equity_and_shares(self) -> None:
-        # VCI has no direct BVPS; owners' equity ÷ shares → VND/share.
+    def test_derives_bvps_from_eps_pe_pb(self) -> None:
+        # VCI has no direct BVPS; BVPS = EPS × P/E ÷ P/B (price cancels).
         payload = build_fundamentals_payload(
-            "FPT", (_fr("owners_equity", "40000000000000"), _fr("shares", "1470000000"))
+            "FPT", (_fr("eps", "5216"), _fr("pe", "11.6"), _fr("pb", "2.44"))
         )
-        assert payload["ratios"]["bvps"] == float(Decimal("40000000000000") / Decimal("1470000000"))
+        expected = float(Decimal("5216") * Decimal("11.6") / Decimal("2.44"))
+        assert payload["ratios"]["bvps"] == expected
 
     def test_direct_bvps_is_not_overwritten_by_derivation(self) -> None:
         payload = build_fundamentals_payload(
-            "FPT", (_fr("bvps", "25000"), _fr("owners_equity", "1"), _fr("shares", "1"))
+            "FPT", (_fr("bvps", "25000"), _fr("eps", "5216"), _fr("pe", "11.6"), _fr("pb", "2.44"))
         )
         assert payload["ratios"]["bvps"] == 25000.0
 
