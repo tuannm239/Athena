@@ -54,8 +54,11 @@ fi
   # ---- 1) Price sync -------------------------------------------------------
   # Default mode `ensure` (self-healing: full backfill when no readable prices,
   # else incremental top-up); set SYNC_ON_START_MODE=full to force a wider
-  # backfill. Keep SYNC_LOOKBACK_DAYS small so a fresh ephemeral disk syncs
-  # quickly — the snapshot only needs the latest closes. Non-fatal to the API.
+  # backfill. SYNC_LOOKBACK_DAYS defaults to ~5 years: Athena is a decision
+  # system and every publish replaces the dataset, so the snapshot must carry
+  # deep daily history (probability/risk/regime/backtest need it). EOD feeds
+  # return the whole window in one request per symbol, so depth is not slow.
+  # Non-fatal to the API.
   if [ "${SYNC_ON_START:-false}" = "true" ]; then
     echo "===== ATHENA_SYNC BEGIN mode=${SYNC_ON_START_MODE:-ensure} ====="
     if python -m data_pipeline.cli sync "${SYNC_ON_START_MODE:-ensure}"; then

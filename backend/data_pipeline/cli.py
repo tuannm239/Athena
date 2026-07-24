@@ -23,7 +23,7 @@ fetches data itself — every fetch goes through `ProviderSyncService`.
 Configuration (environment):
     SYNC_MODE            FULL | INCREMENTAL | MANUAL   (used by the entrypoint)
     SYNC_TICKERS         comma list; default "VNINDEX,VN30,HOSE,HNX,UPCOM"
-    SYNC_LOOKBACK_DAYS   default 365
+    SYNC_LOOKBACK_DAYS   default 1825 (~5y; deep history for the decision engine)
     SYNC_MAX_RETRIES     default 3
     plus DATABASE_URL / DUCKDB_DIR from the standard Settings.
 """
@@ -99,7 +99,7 @@ def build_scheduler(
         sync=sync,
         provider=provider or _resolve_price_provider(),
         tickers=resolved,
-        lookback_days=int(os.environ.get("SYNC_LOOKBACK_DAYS", "365")),
+        lookback_days=int(os.environ.get("SYNC_LOOKBACK_DAYS", "1825")),
         max_retries=int(os.environ.get("SYNC_MAX_RETRIES", "3")),
     )
 
@@ -354,18 +354,20 @@ def main(argv: list[str] | None = None) -> int:
     if args.action == "full":
         outcome = scheduler.full()
     elif args.action == "ensure":
-        # Self-healing boot sync: ALWAYS re-pull a recent window and republish.
-        # An incremental top-up publishes nothing when the provider returns no
-        # bars past the watermark (weekend/holiday, or the source simply has no
-        # newer session), which leaves the published date stuck at the last
-        # sync. REPLAY re-fetches [today-lookback, today] and mints a fresh
-        # {end}#rN version each run, so the published date advances to the
-        # source's latest available session and the snapshot is re-materialised
-        # even if the ephemeral disk was wiped. Keep SYNC_LOOKBACK_DAYS small
-        # (the dashboard only needs the latest closes); a bigger value backfills
-        # more history for the charts.
+        # Self-healing boot sync: ALWAYS re-pull a DEEP window and republish.
+        #
+        # Each published version's snapshot IS the whole dataset the read side
+        # sees (a publish replaces, it does not append), and Athena is a
+        # decision system — probability, risk, regime, factor and backtest all
+        # need years of daily history, not just the latest closes. So the boot
+        # replay must re-materialise the full history, defaulting to ~5 years
+        # (SYNC_LOOKBACK_DAYS). This is not slow: the EOD (TradingView-UDF)
+        # feeds return the entire window in ONE request per symbol, so a 5-year
+        # window costs the same round-trips as a short one — it just carries
+        # more rows. Replay also mints a fresh {end}#rN version each run, so the
+        # published date advances and the snapshot survives an ephemeral wipe.
         end = date.today()
-        start = end - timedelta(days=int(os.environ.get("SYNC_LOOKBACK_DAYS", "45")))
+        start = end - timedelta(days=int(os.environ.get("SYNC_LOOKBACK_DAYS", "1825")))
         outcome = scheduler.replay(start, end)
     elif args.action in ("incremental", "market", "universe", "symbol", "symbols"):
         # market/universe/symbol are incremental syncs over a scoped ticker set
