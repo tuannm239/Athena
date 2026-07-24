@@ -12,10 +12,12 @@ existing Module-2 stack via `create_dnse_price_provider` — not re-implemented.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timezone
 
-from providers.connectors.dnse.client import DnseMarketClient
+from providers.connectors.dnse.auth import DnseSigner
+from providers.connectors.dnse.client import DnseMarketClient, HttpxDnseTransport
+from providers.connectors.dnse.config import DnseConfig
 from providers.connectors.dnse.models import parse_udf_bars
 from providers.connectors.resilience import (
     HealthMonitor,
@@ -59,15 +61,34 @@ class DnseProvider:
         return parse_udf_bars(symbol, payload, start, end)
 
 
-def create_dnse_price_provider(*, client: DnseMarketClient | None = None) -> ResilientPriceProvider:
+def create_dnse_price_provider(
+    *,
+    client: DnseMarketClient | None = None,
+    timeout: float | None = None,
+    max_attempts: int | None = None,
+) -> ResilientPriceProvider:
     """Production-ready resilient DNSE price provider (OHLCV incl. VNINDEX/VN30).
 
     The DNSE client already retries transient failures with backoff (spec §9),
     so the resilient decorator here adds only rate limiting, a TTL cache and
     health tracking (retry disabled to avoid double-retrying permanent errors).
+
+    `timeout`/`max_attempts` override the env config so the failover chain can
+    make DNSE **fail fast** (short timeout, single attempt) — a host that hangs
+    for a foreign datacenter IP is abandoned quickly instead of stalling every
+    ticker for the full timeout × attempts before VNStock takes over.
     """
+    if client is None:
+        config = DnseConfig.from_env()
+        if timeout is not None:
+            config = replace(config, timeout=timeout)
+        if max_attempts is not None:
+            config = replace(config, max_attempts=max_attempts)
+        client = DnseMarketClient(
+            config=config, transport=HttpxDnseTransport(), signer=DnseSigner(config)
+        )
     return ResilientPriceProvider(
-        inner=DnseProvider(client=client or DnseMarketClient.from_env()),
+        inner=DnseProvider(client=client),
         retry=RetryPolicy(max_attempts=1),
         limiter=TokenBucketRateLimiter(
             rate_per_second=_DEFAULT_RATE_PER_SECOND, capacity=_DEFAULT_BURST

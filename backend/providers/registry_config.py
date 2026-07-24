@@ -72,7 +72,11 @@ def _create_dnse_price_chain() -> object:
     stops. Business layers are unaware of the switch (ADR-0017).
     """
     return create_chained_price_provider(
-        create_dnse_price_provider(),
+        # Fail fast: openapi.dnse.com.vn can hang for non-VN datacenter IPs
+        # (observed as timeouts from Render), so a short timeout + single
+        # attempt hands over to VNStock in seconds instead of stalling each
+        # ticker for the full retry budget.
+        create_dnse_price_provider(timeout=_CHAIN_TIMEOUT, max_attempts=1),
         create_vnstock_price_provider(),
     )
 
