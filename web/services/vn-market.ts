@@ -80,3 +80,19 @@ export const vnFundamentalsService = {
       () => sampleFundamentals(ticker),
     ),
 };
+
+export interface VnPricePoint {
+  day: string;
+  close: number;
+}
+export interface VnCompanyPrices {
+  ticker: string;
+  points: VnPricePoint[];
+}
+
+// Persisted daily closes for a company. No mock fallback — an empty series is
+// honest (nothing synced yet), so the workspace never shows sample prices.
+export const vnCompanyPricesService = {
+  get: (ticker: string): Promise<VnCompanyPrices> =>
+    apiRequest<VnCompanyPrices>(`/companies/${ticker}/prices`),
+};

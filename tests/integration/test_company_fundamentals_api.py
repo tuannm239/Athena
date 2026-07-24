@@ -73,3 +73,13 @@ def test_fundamentals_returns_persisted_payload(ctx: tuple[TestClient, sessionma
     assert r.status_code == 200
     data = r.json()["data"]
     assert data["ratios"]["roe"] == 0.21 and data["quality_score"] == 82.0
+
+
+def test_prices_honest_empty_before_sync(ctx: tuple[TestClient, sessionmaker]) -> None:
+    client, _ = ctx
+    headers = _auth(client)
+    r = client.get("/api/v1/companies/FPT/prices", headers=headers)
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert data["ticker"] == "FPT"
+    assert data["points"] == []  # nothing synced → honest empty, never sample

@@ -80,6 +80,27 @@ async def get_company_fundamentals(
     return ok(request, _empty_fundamentals(key, exchange, sector))
 
 
+@router.get("/{ticker}/prices", summary="Company daily close series (persisted)")
+async def get_company_prices(
+    request: Request,
+    ticker: str,
+    services: Container = Depends(container),
+    _user: User = Depends(current_user),
+) -> Envelope[dict[str, object]]:
+    """The ticker's persisted daily closes (from the synced prices dataset).
+
+    Honest-empty (`points: []`) when nothing has been synced for the ticker —
+    the frontend shows a real chart when data exists, never sample values.
+    """
+    key = ticker.upper()
+    series = sorted(
+        (obs for obs in services.market_prices.published_prices() if obs.ticker.upper() == key),
+        key=lambda obs: obs.day,
+    )
+    points = [{"day": obs.day.isoformat(), "close": float(obs.close)} for obs in series]
+    return ok(request, {"ticker": key, "points": points})
+
+
 @router.get("/{ticker}/factors", summary="Company factor values")
 async def get_company_factors(ticker: str, _user: User = Depends(current_user)) -> None:
     not_implemented()

@@ -19,10 +19,9 @@ import { EvidenceCard } from "@/components/ui/evidence-card";
 import { RiskLevelBadge } from "@/components/ui/decision-status-badge";
 import { NotesPanel } from "@/components/notes-panel";
 import { companiesService } from "@/services/market";
-import { vnFundamentalsService } from "@/services/vn-market";
+import { vnCompanyPricesService, vnFundamentalsService } from "@/services/vn-market";
 import { useDecisions } from "@/hooks/queries";
 import { useTrackRecent } from "@/hooks/use-track-recent";
-import { samplePriceSeries } from "@/lib/analysis";
 import { ratioPct, vnd, type VnFundamentals } from "@/lib/vn";
 import { pct } from "@/lib/utils";
 
@@ -98,6 +97,7 @@ export default function CompanyWorkspace({ params }: { params: Promise<{ ticker:
   const [tab, setTab] = useState("overview");
   const company = useQuery({ queryKey: ["company", T], queryFn: () => companiesService.get(T) });
   const fund = useQuery({ queryKey: ["vn-fund", T], queryFn: () => vnFundamentalsService.get(T) });
+  const prices = useQuery({ queryKey: ["vn-prices", T], queryFn: () => vnCompanyPricesService.get(T) });
   const decisions = useDecisions({ limit: 50 });
 
   useTrackRecent({ type: "company", id: T, label: T, href: `/companies/${T}` });
@@ -137,11 +137,26 @@ export default function CompanyWorkspace({ params }: { params: Promise<{ ticker:
         <div className="grid gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">
             <CardHeader className="flex-row items-center justify-between">
-              <CardTitle>Price (sample)</CardTitle>
-              <Badge variant="warn">sample</Badge>
+              <CardTitle>Price</CardTitle>
+              {prices.data?.points.length ? (
+                <Badge variant="muted">
+                  {prices.data.points.length} sessions
+                </Badge>
+              ) : null}
             </CardHeader>
             <CardContent>
-              <LineChart data={samplePriceSeries(27_500, 120, T.length + 3)} tone="primary" height={180} />
+              {prices.data && prices.data.points.length > 1 ? (
+                <LineChart
+                  data={prices.data.points.map((p) => p.close)}
+                  tone="primary"
+                  height={180}
+                />
+              ) : (
+                <EmptyState
+                  title="No price history yet"
+                  description="Daily closes appear here once a market sync has run for this ticker."
+                />
+              )}
             </CardContent>
           </Card>
           <Card>

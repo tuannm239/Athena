@@ -53,6 +53,7 @@ class Container:
     company_fundamentals: SqlCompanyFundamentalsRepository
     universe: UniverseRepository
     market_snapshot: VnMarketSnapshotQuery
+    market_prices: PublishedMarketPriceReader
     register_user: RegisterUser
     authenticate: AuthenticateUser
     api_keys: ApiKeyService
@@ -78,7 +79,8 @@ def build_container(
         catalog=SqlDatasetCatalog(sessions),
         snapshots=build_snapshot_store(cfg, sessions),
     )
-    market_snapshot = VnMarketSnapshotQuery(reader=PublishedMarketPriceReader(pipeline_read))
+    market_prices = PublishedMarketPriceReader(pipeline_read)
+    market_snapshot = VnMarketSnapshotQuery(reader=market_prices)
     return Container(
         settings=cfg,
         sessions=sessions,
@@ -88,6 +90,7 @@ def build_container(
         company_fundamentals=SqlCompanyFundamentalsRepository(sessions),
         universe=SqlUniverseRepository(sessions),
         market_snapshot=market_snapshot,
+        market_prices=market_prices,
         register_user=RegisterUser(users, credentials, hasher, audit=audit),
         authenticate=AuthenticateUser(
             users, credentials, hasher, tokens, audit=audit, api_keys=api_key_store
