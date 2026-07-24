@@ -128,20 +128,33 @@ DEFAULT_SELECTION = {
 }
 
 
+# Registered PRICE sources selectable directly via MARKET_PROVIDER. `vn_chain`
+# (VNDirect → TCBS → VCI) is the EOD-friendly option: VNDirect's CDN-fronted
+# dchart feed answers from non-VN datacenter IPs (e.g. Render), where VCI and
+# DNSE time out — so it keeps daily closes flowing without a VN-local host.
+_SELECTABLE_PRICE = frozenset({VNSTOCK, DNSE, VN_CHAIN, VNDIRECT, TCBS, VCI, ALPHAVANTAGE, STATIC})
+
+
 def market_selection(provider: str | None = None, *, failover: bool = True) -> dict[str, str]:
     """Capability→provider selection for the configured market provider (spec §4).
 
-    `provider` is `MARKET_PROVIDER` ("dnse" default, or "vnstock"); `failover`
-    is `MARKET_FAILOVER`. Only the PRICE capability changes source — DNSE does
-    not serve fundamentals or sector classification, so those stay on VNStock
-    (business layers are unaware; ADR-0017). When DNSE is selected with failover
-    on, PRICE resolves to the DNSE→VNStock chain so an outage never stops data.
+    `provider` is `MARKET_PROVIDER` (default "dnse"); `failover` is
+    `MARKET_FAILOVER`. Only the PRICE capability changes source — DNSE serves
+    neither fundamentals nor sector classification, so those stay on VNStock
+    (business layers are unaware; ADR-0017).
+
+    * ``dnse``    → DNSE primary, VNStock fallback chain (or DNSE alone if
+      failover is off).
+    * ``vnstock`` → VNStock alone.
+    * any other registered source (``vn_chain``, ``vndirect``, ``tcbs``,
+      ``vci``, …) is used directly for PRICE — e.g. ``vn_chain`` for CDN-based
+      EOD data that survives a non-VN host.
     """
     chosen = (provider or DNSE).strip().lower()
-    if chosen == VNSTOCK:
-        price = VNSTOCK
-    elif failover:
-        price = DNSE_CHAIN  # DNSE primary, VNStock fallback
+    if chosen == DNSE:
+        price = DNSE_CHAIN if failover else DNSE
+    elif chosen in _SELECTABLE_PRICE:
+        price = chosen
     else:
-        price = DNSE
+        price = VNSTOCK  # unknown value → safe default
     return {**DEFAULT_SELECTION, Capability.PRICE.value: price}

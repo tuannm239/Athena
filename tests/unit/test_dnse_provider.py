@@ -249,3 +249,18 @@ class TestFailoverAndSelection:
         # DNSE does not serve fundamentals/sectors — those stay on vnstock.
         sel = market_selection("dnse", failover=True)
         assert sel["fundamental"] == VNSTOCK and sel["sector"] == VNSTOCK
+
+    def test_selection_allows_vn_chain_for_eod_from_render(self) -> None:
+        # vn_chain (VNDirect→TCBS→VCI) is selectable directly for CDN-based EOD.
+        assert market_selection("vn_chain", failover=True)["price"] == "vn_chain"
+        assert market_selection("vndirect", failover=True)["price"] == "vndirect"
+
+    def test_selection_unknown_provider_falls_back_to_vnstock(self) -> None:
+        assert market_selection("nope", failover=True)["price"] == VNSTOCK
+
+    def test_vn_chain_resolves_from_registry(self) -> None:
+        from providers.registry_config import build_registry
+        from providers.sdk.registry import Capability
+
+        provider = build_registry().resolve(Capability.PRICE, market_selection("vn_chain"))
+        assert provider.__class__.__name__ == "ChainedPriceProvider"
