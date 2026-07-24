@@ -46,6 +46,11 @@ const TABS: TabDef[] = [
   { id: "peers", label: "Peers" },
 ];
 
+// Trailing trading-session counts per range (≈21 sessions/month). ALL = full history.
+const RANGES = { "1M": 21, "3M": 63, "6M": 126, "1Y": 252, "5Y": 1250, ALL: Infinity } as const;
+type RangeKey = keyof typeof RANGES;
+const RANGE_KEYS = Object.keys(RANGES) as RangeKey[];
+
 function thesisPoints(f: VnFundamentals): { bull: string[]; bear: string[]; risks: string[] } {
   const r = f.ratios;
   const bull: string[] = [];
@@ -95,6 +100,7 @@ export default function CompanyWorkspace({ params }: { params: Promise<{ ticker:
   const { ticker } = use(params);
   const T = ticker.toUpperCase();
   const [tab, setTab] = useState("overview");
+  const [range, setRange] = useState<RangeKey>("1Y");
   const company = useQuery({ queryKey: ["company", T], queryFn: () => companiesService.get(T) });
   const fund = useQuery({ queryKey: ["vn-fund", T], queryFn: () => vnFundamentalsService.get(T) });
   const prices = useQuery({ queryKey: ["vn-prices", T], queryFn: () => vnCompanyPricesService.get(T) });
@@ -138,23 +144,38 @@ export default function CompanyWorkspace({ params }: { params: Promise<{ ticker:
           <Card className="lg:col-span-2">
             <CardHeader className="flex-row items-center justify-between">
               <CardTitle>Price</CardTitle>
-              {prices.data?.points.length ? (
-                <Badge variant="muted">
-                  {prices.data.points.length} sessions
-                </Badge>
+              {prices.data && prices.data.points.length > 1 ? (
+                <div className="flex items-center gap-1" role="group" aria-label="Time range">
+                  {RANGE_KEYS.map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setRange(key)}
+                      aria-pressed={range === key}
+                      className={`rounded px-2 py-0.5 text-xs font-medium transition-colors ${
+                        range === key
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {key}
+                    </button>
+                  ))}
+                </div>
               ) : null}
             </CardHeader>
             <CardContent>
               {prices.data && prices.data.points.length > 1 ? (
                 <CandlestickChart
-                  data={prices.data.points.map((p) => ({
+                  data={prices.data.points.slice(-RANGES[range]).map((p) => ({
                     open: p.open,
                     high: p.high,
                     low: p.low,
                     close: p.close,
+                    volume: p.volume,
                   }))}
-                  height={220}
-                  label={`${T} daily candlesticks`}
+                  height={260}
+                  label={`${T} daily candlesticks (${range})`}
                 />
               ) : (
                 <EmptyState
